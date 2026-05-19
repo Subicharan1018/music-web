@@ -14,6 +14,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AlbumDetailPage } from './pages/AlbumDetailPage';
 import { ArtistDetailPage } from './pages/ArtistDetailPage';
 import { SearchPage } from './pages/SearchPage';
+import { ArtistsPage } from './pages/ArtistsPage';
 
 const RouteSync = () => {
   const location = useLocation();
@@ -63,7 +64,7 @@ function App() {
         
         {/* Placeholders for other routes */}
         <Route path="albums" element={<LibraryPage />} />
-        <Route path="artists" element={<LibraryPage />} />
+        <Route path="artists" element={<ArtistsPage />} />
         <Route path="playlists" element={<LibraryPage />} />
         <Route path="favorites" element={<LibraryPage />} />
         <Route path="stats" element={<LibraryPage />} />

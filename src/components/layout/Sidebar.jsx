@@ -49,8 +49,8 @@ const NavSection = ({ title, collapsed, children }) => (
 
 export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { serverConfig } = useSettingsStore();
-  const isConnected = !!serverConfig?.serverUrl;
+  const { serverUrl } = useSettingsStore();
+  const isConnected = !!serverUrl;
 
   return (
     <aside 

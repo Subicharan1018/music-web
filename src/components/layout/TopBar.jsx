@@ -9,18 +9,18 @@ import { useSettingsStore } from '../../store/settingsStore';
 
 export const TopBar = () => {
   const { activeView } = useUIStore();
-  const { serverConfig } = useSettingsStore();
+  const { serverUrl } = useSettingsStore();
 
-  const isConnected = !!serverConfig?.serverUrl;
+  const isConnected = !!serverUrl;
   
   // Format the URL for display (e.g. "music.example.com")
   let displayUrl = 'NOT CONNECTED';
   if (isConnected) {
     try {
-      const urlObj = new URL(serverConfig.serverUrl);
+      const urlObj = new URL(serverUrl);
       displayUrl = urlObj.hostname.toUpperCase();
     } catch {
-      displayUrl = serverConfig.serverUrl.toUpperCase();
+      displayUrl = serverUrl.toUpperCase();
     }
   }
 

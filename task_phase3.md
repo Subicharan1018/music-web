@@ -48,7 +48,7 @@
 - [x] 33. **`SearchPage.jsx`**: Implement a 300ms debounced search input. **Constraint:** Use editorial styling (underline only, `font-sans`, no border-radius, no box) and an empty state (`font-serif italic text-ink-mute` "Start typing to search your library"). Split results into Artist, Album, and Song sections.
 
 **8. Routing & App Wiring (`src/App.jsx` & `src/components/layout/Sidebar.jsx`)**
-- [x] 34. Register new routes in `App.jsx`: `/library`, `/album/:id`, `/artist/:id`, `/artists` (artist list view), and `/search`.
+- [x] 34. Register new routes in `App.jsx`: `/library`, `/album/:id`, `/artist/:id`, `/artists` (artist list view), and `/search`. (Fixed: Created ArtistsPage for /artists. Validated routing and NavLink paths. Confirmed BrowserRouter in main.jsx.)
 - [x] 35. Wire `uiStore.activeView` sync by using a `useEffect` hook listening to React Router's `useLocation()` to update the `TopBar` contextually.
 - [x] 36. Update `Sidebar.jsx` to use React Router `<NavLink>` for correct active routing states.
 
