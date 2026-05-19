@@ -25,7 +25,7 @@ export const TopBar = () => {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-[44px] bg-paper border-b border-ink/16 z-50 flex items-center justify-between px-6 font-sans text-[10.5px] tracking-[0.18em] uppercase text-ink-faint">
+    <div className="fixed top-0 left-0 right-0 h-[44px] bg-paper/70 backdrop-blur-md border-b border-ink/10 shadow-sm z-50 flex items-center justify-between px-6 font-sans text-[10.5px] tracking-[0.18em] uppercase text-ink-faint">
       
       {/* Left: Branding */}
       <div className="flex-1 text-left">

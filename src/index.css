@@ -128,5 +128,234 @@
   }
 }
 
-/* Import tw-animate-css utilities (if available) */
-@import "tw-animate-css";
+/* tw-animate-css import removed — not installed in this environment. */
+
+/* MusicPlayer Widget Styles */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.mask {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.is-zoomed .mask {
+  width: 256px;
+  height: 256px;
+  position: absolute;
+  bottom: 80px;
+  left: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.spin {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-enter {
+  animation: cover-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.cover-exit {
+  animation: cover-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.hole {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 25%;
+  height: 25%;
+  background-color: var(--color-paper);
+  border-radius: 9999px;
+  border: 1px solid rgba(21, 20, 15, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hole-inner {
+  width: 20%;
+  height: 20%;
+  background-color: rgba(21, 20, 15, 0.2);
+  border-radius: 9999px;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  background-color: rgba(239, 231, 210, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 8px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(21, 20, 15, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.track-info {
+  width: 180px;
+  flex-shrink: 0;
+  position: relative;
+  height: 40px;
+  overflow: hidden;
+}
+
+.ti-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ti-abs {
+  pointer-events: none;
+}
+
+.ti-enter {
+  animation: ti-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ti-exit {
+  animation: ti-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.artist {
+  font-size: 11px;
+  color: rgba(21, 20, 15, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.track {
+  font-size: 14px;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-weight: 700;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ctrl {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--color-ink);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.ctrl:hover {
+  background-color: rgba(21, 20, 15, 0.05);
+}
+
+.ctrl-play {
+  width: 44px;
+  height: 44px;
+  background-color: var(--color-coral);
+  color: #fff;
+}
+
+.ctrl-play:hover {
+  background-color: var(--color-coral-soft);
+  transform: scale(1.05);
+}
+
+.ctrl-toggle.is-active {
+  color: var(--color-coral);
+}
+
+.ctrl-loop {
+  position: relative;
+}
+
+.loop-one {
+  font-size: 8px;
+  font-weight: bold;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ctrl-loop.mode-one .loop-one {
+  display: block;
+}
+
+.ctrl-loop:not(.mode-one) .loop-one {
+  display: none;
+}
+
+.bar {
+  flex: 1;
+  height: 6px;
+  background-color: rgba(21, 20, 15, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.bar:hover .bar-fill {
+  background-color: var(--color-coral-soft);
+}
+
+.bar-fill {
+  height: 100%;
+  background-color: var(--color-coral);
+  transition: width 0.1s linear;
+}
+
+.time {
+  font-size: 12px;
+  color: rgba(21, 20, 15, 0.6);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 80px;
+  justify-content: flex-end;
+}

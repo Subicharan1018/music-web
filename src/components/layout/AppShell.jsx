@@ -14,6 +14,7 @@ import { PlayerBar } from './PlayerBar';
 import { QueuePanel } from '../queue/QueuePanel';
 import { TopBar } from './TopBar';
 import { SideRail } from './SideRail';
+import SonicWaveformBackground from '../ui/sonic-waveform';
 import { useUIStore } from '../../store/uiStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
@@ -57,7 +58,8 @@ export const AppShell = () => {
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-screen w-full bg-transparent text-ink overflow-hidden">
+      <div className="relative flex h-screen w-full bg-transparent text-ink overflow-hidden">
+        <SonicWaveformBackground />
         <TopBar />
         <SideRail side="left" label="NAVIVIBE · MUSIC" />
         <SideRail side="right" label="2026 · V0.1" />

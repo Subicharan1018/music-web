@@ -54,7 +54,7 @@ export const Sidebar = () => {
 
   return (
     <aside 
-      className={`fixed top-[44px] left-[36px] h-[calc(100vh-44px-80px)] bg-paper border-r border-ink/10 transition-all duration-300 z-40 flex flex-col ${
+      className={`fixed top-[44px] left-[36px] h-[calc(100vh-44px-80px)] bg-paper/70 backdrop-blur-2xl border-r border-ink/10 shadow-[4px_0_24px_rgba(21,20,15,0.03)] transition-all duration-300 z-40 flex flex-col ${
         sidebarCollapsed ? 'sidebar-width-collapsed' : 'sidebar-width'
       }`}
     >

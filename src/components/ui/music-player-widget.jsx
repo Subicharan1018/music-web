@@ -56,6 +56,17 @@ function useTransitionSound() {
 }
 
 const FFT_SIZE = 256
+const FALLBACK_TRACK = {
+  title: 'No track selected',
+  artist: '—',
+  cover: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23e6dcc4"/><circle cx="200" cy="200" r="120" fill="%23d3c6a5"/><circle cx="200" cy="200" r="18" fill="%23b9aa87"/></svg>',
+  src: ''
+}
+
+function normalizeTracks(tracks) {
+  if (!Array.isArray(tracks) || tracks.length === 0) return [FALLBACK_TRACK]
+  return tracks
+}
 function useAudioAnalyser(audioRef) {
   const ctxRef = useRef(null)
   const analyserRef = useRef(null)
@@ -162,11 +173,12 @@ function reducer(state, action) {
 }
 
 function useAudioPlayer(tracks) {
+  const safeTracks = normalizeTracks(tracks)
   const audioRef = useRef(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  const [state, dispatch] = useReducer(reducer, initialReducerState(tracks.length))
+  const [state, dispatch] = useReducer(reducer, initialReducerState(safeTracks.length))
 
   const { getFrequencyData, getBandEnergy } = useAudioAnalyser(audioRef)
   const playTransitionSound = useTransitionSound()
@@ -177,10 +189,10 @@ function useAudioPlayer(tracks) {
     const bassEnergy = getBandEnergy(0, 4)
     playTransitionSound(bassEnergy)
     dispatch({ type: 'SET_TRACK', index, direction })
-    audio.src = tracks[index].src
+    audio.src = safeTracks[index].src
     audio.load()
     if (autoplay) audio.play().catch(() => {})
-  }, [tracks, playTransitionSound, getBandEnergy])
+  }, [safeTracks, playTransitionSound, getBandEnergy])
 
   const toggle = useCallback(() => {
     const audio = audioRef.current
@@ -229,8 +241,8 @@ function useAudioPlayer(tracks) {
   }, [])
 
   const toggleShuffle = useCallback(() => {
-    dispatch({ type: 'TOGGLE_SHUFFLE', trackCount: tracks.length })
-  }, [tracks.length])
+    dispatch({ type: 'TOGGLE_SHUFFLE', trackCount: safeTracks.length })
+  }, [safeTracks.length])
 
   const cycleLoop = useCallback(() => dispatch({ type: 'CYCLE_LOOP' }), [])
 
@@ -267,16 +279,16 @@ function useAudioPlayer(tracks) {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    audio.src = tracks[0].src
+    audio.src = safeTracks[0].src
     audio.load()
-  }, [tracks])
+  }, [safeTracks])
 
   return {
     audioRef,
     state,
     currentTime,
     duration,
-    currentTrack: tracks[state.currentIndex],
+    currentTrack: safeTracks[state.currentIndex],
     toggle,
     next,
     prev,
@@ -387,7 +399,7 @@ function ScalesMixer({ isPlaying, getFrequencyData }) {
   })
 
   return (
-    <svg className="scales" viewBox="0 0 98 108" aria-hidden="true">
+    <svg className="scales" style={{ width: '32px', height: '32px', fill: 'currentColor', opacity: 0.5 }} viewBox="0 0 98 108" aria-hidden="true">
       <mask id={maskId}>
         <rect width="10" height="10" fill="#fff" />
       </mask>
@@ -499,11 +511,12 @@ function TrackInfo({ layers }) {
   )
 }
 
-export function MusicPlayer({ tracks, crossOrigin }) {
-  const player = useAudioPlayer(tracks)
+export function MusicPlayer({ tracks, crossOrigin, playerOverride }) {
+  const safeTracks = useMemo(() => normalizeTracks(tracks), [tracks])
+  const player = playerOverride || useAudioPlayer(safeTracks)
   const [isZoomed, setIsZoomed] = useState(false)
 
-  const [layers, setLayers] = useState(() => [{ id: 0, track: tracks[0], dir: null }])
+  const [layers, setLayers] = useState(() => [{ id: 0, track: safeTracks[0], dir: null }])
   const lastIndex = useRef(0)
   const idRef = useRef(1)
 
@@ -518,8 +531,16 @@ export function MusicPlayer({ tracks, crossOrigin }) {
     return () => clearTimeout(t)
   }, [player.state.currentIndex, player.currentTrack, player.state.direction])
 
-  const seekForward = useCallback(() => { const a = player.audioRef.current; if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5) }, [player.audioRef])
-  const seekBackward = useCallback(() => { const a = player.audioRef.current; if (a) a.currentTime = Math.max(0, a.currentTime - 5) }, [player.audioRef])
+  const seekForward = useCallback(() => {
+    if (player.seekBy) return player.seekBy(5)
+    const a = player.audioRef?.current
+    if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5)
+  }, [player])
+  const seekBackward = useCallback(() => {
+    if (player.seekBy) return player.seekBy(-5)
+    const a = player.audioRef?.current
+    if (a) a.currentTime = Math.max(0, a.currentTime - 5)
+  }, [player])
 
   const shortcuts = useMemo(() => ({ toggle: player.toggle, next: player.next, prev: player.prev, seekForward, seekBackward, toggleShuffle: player.toggleShuffle, cycleLoop: player.cycleLoop }), [player.toggle, player.next, player.prev, seekForward, seekBackward, player.toggleShuffle, player.cycleLoop])
 
@@ -542,7 +563,7 @@ export function MusicPlayer({ tracks, crossOrigin }) {
 
   return (
     <div className={`card ${player.state.isPlaying ? 'is-playing' : ''} ${isZoomed ? 'is-zoomed' : ''}`} onClick={(e) => { if (!(e.target).closest('.mask')) setIsZoomed(false) }}>
-      <audio ref={player.audioRef} preload="metadata" crossOrigin={crossOrigin} />
+      {player.audioRef ? <audio ref={player.audioRef} preload="metadata" crossOrigin={crossOrigin} /> : null}
       <Disc layers={layers} isPlaying={player.state.isPlaying} isZoomed={isZoomed} trackKey={player.state.currentIndex} direction={player.state.direction} onZoomToggle={() => setIsZoomed((z) => !z)} />
       <div className="info">
         <ScalesMixer isPlaying={player.state.isPlaying} getFrequencyData={player.getFrequencyData} />

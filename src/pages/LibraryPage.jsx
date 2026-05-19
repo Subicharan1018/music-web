@@ -3,8 +3,6 @@
  * Displays library sections: Recently Added, Frequently Played, and All Albums.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import MusicPlayer from '@/components/ui/music-player-widget';
-import SonicWaveformHero from '@/components/ui/sonic-waveform';
 import { useSubsonic } from '../hooks/useSubsonic';
 import { useLibraryStore } from '../store/libraryStore';
 import { AlbumCard } from '../components/library/AlbumCard';
@@ -85,31 +83,6 @@ export const LibraryPage = () => {
 
   return (
     <div className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
-      {/* Demo section (non-destructive) */}
-      <section className="mb-12">
-        <div className="mb-4 text-sm font-medium text-ink-mute uppercase tracking-widest">Showcase · New Widgets</div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-paper rounded-md p-4 shadow-sm">
-            <div className="mb-2 font-serif text-lg">Music Player Demo</div>
-            <MusicPlayer
-              tracks={[
-                { title: 'Southern Roots Boogie', artist: 'Falconer', cover: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-                { title: 'Sax Party', artist: 'Ofer Koren', cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
-                { title: 'Nonsense', artist: 'Raw', cover: 'https://images.unsplash.com/photo-1511376777868-611b54f68947?w=800&q=80', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' }
-              ]}
-              crossOrigin="anonymous"
-            />
-          </div>
-
-          <div className="bg-paper rounded-md p-4 shadow-sm overflow-hidden">
-            <div className="mb-2 font-serif text-lg">Sonic Waveform Demo</div>
-            <div className="h-64 relative rounded-md overflow-hidden">
-              <SonicWaveformHero />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {renderSection('Nº 01 · Recently Added', recentAlbums, true)}
       {renderSection('Nº 02 · Frequently Played', frequentAlbums, true)}
       {renderSection('Nº 03 · All Albums', albums, false)}
