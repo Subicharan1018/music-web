@@ -19,9 +19,12 @@ export const LibraryPage = () => {
 
   useEffect(() => {
     if (!client) return;
-    if (recentAlbums.length === 0 && !isLoading) fetchAlbums(client, 'newest', true);
-    if (frequentAlbums.length === 0 && !isLoading) fetchAlbums(client, 'frequent', true);
-    if (albums.length === 0 && !isLoading) fetchAlbums(client, 'alphabeticalByName', true);
+    const loadData = async () => {
+      if (recentAlbums.length === 0) await fetchAlbums(client, 'newest', true);
+      if (frequentAlbums.length === 0) await fetchAlbums(client, 'frequent', true);
+      if (albums.length === 0) await fetchAlbums(client, 'alphabeticalByName', true);
+    };
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
 
@@ -39,8 +42,6 @@ export const LibraryPage = () => {
   }, [isLoading, albumsHasMore, client, fetchAlbums]);
 
   const renderSection = (title, items, isHorizontal = false) => {
-    if (items.length === 0 && !isLoading) return null;
-    
     return (
       <div className="flex flex-col gap-4 mb-12">
         <div className="flex justify-between items-end border-b border-ink/10 pb-2">
@@ -49,7 +50,11 @@ export const LibraryPage = () => {
           </div>
         </div>
         
-        {isHorizontal ? (
+        {items.length === 0 && !isLoading ? (
+          <div className="py-8 font-serif italic text-ink-mute">
+            No albums found.
+          </div>
+        ) : isHorizontal ? (
           <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar -mx-8 px-8 snap-x">
             {isLoading && items.length === 0 ? (
               [1,2,3,4,5].map(i => <div key={i} className="w-40 shrink-0 snap-start"><SkeletonCard /></div>)

@@ -1,0 +1,20 @@
+# Exclude build artifacts and dependencies from the knowledge graph
+node_modules/
+dist/
+build/
+.git/
+.npm/
+
+# Exclude graphify's own output
+graphify-out/
+.graphify/
+
+# Exclude environment and lock files
+.env*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Exclude specific asset folders if they are too large or noisy
+# public/
+# src/assets/
