@@ -8,7 +8,8 @@ import React from 'react';
 import { useUIStore } from '../../store/uiStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { X, Trash2, GripVertical } from 'lucide-react';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useSubsonic } from '../../hooks/useSubsonic';
 
@@ -84,7 +85,28 @@ const SortableQueueItem = ({ song, index, isCurrent, playSong, removeSong }) => 
 
 export const QueuePanel = () => {
   const { queueOpen, setQueueOpen } = useUIStore();
-  const { queue, currentIndex, play, setQueue } = usePlayerStore();
+  const { queue, currentIndex, play, setQueue, reorderQueue } = usePlayerStore();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active && over && active.id !== over.id) {
+      const oldIndex = parseInt(active.id.split('-')[1], 10);
+      const newIndex = parseInt(over.id.split('-')[1], 10);
+      reorderQueue(oldIndex, newIndex);
+    }
+  };
 
   const handleClear = () => {
     setQueue([]);
@@ -132,18 +154,20 @@ export const QueuePanel = () => {
             Queue is empty
           </div>
         ) : (
-          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-            {queue.map((song, index) => (
-              <SortableQueueItem 
-                key={`queue-${index}`} 
-                song={song} 
-                index={index} 
-                isCurrent={index === currentIndex}
-                playSong={handlePlay}
-                removeSong={handleRemove}
-              />
-            ))}
-          </SortableContext>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+              {queue.map((song, index) => (
+                <SortableQueueItem 
+                  key={`queue-${index}`} 
+                  song={song} 
+                  index={index} 
+                  isCurrent={index === currentIndex}
+                  playSong={handlePlay}
+                  removeSong={handleRemove}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </aside>

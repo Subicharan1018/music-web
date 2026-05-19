@@ -61,8 +61,8 @@ export const usePlayer = () => {
   const setShuffle = useCallback((e) => store.setShuffle(e), [store]);
   const setRepeatMode = useCallback((m) => store.setRepeatMode(m), [store]);
 
-  const enableSmartShuffle = useCallback((songs) => {
-    store.enableSmartShuffle(songs, affinityData);
+  const enableSmartShuffle = useCallback(async (songs) => {
+    await store.enableSmartShuffle(songs, affinityData);
     setAffinityRefresh(prev => prev + 1);
   }, [store, affinityData]);
 

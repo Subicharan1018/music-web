@@ -9,7 +9,9 @@ import { create } from 'zustand';
 import AudioEngine from '../services/AudioEngine';
 import ScrobbleService from '../services/ScrobbleService';
 import { applyShuffleAlgorithm } from '../services/ShuffleService';
+import { ShuffleApiService, mapRecommendationsToSongs } from '../services/ShuffleApiService';
 import { useAffinityStore } from './affinityStore';
+import { useSettingsStore } from './settingsStore';
 
 const loadPersistedState = () => {
   try {
@@ -243,7 +245,7 @@ export const usePlayerStore = create((set, get) => ({
     }));
   },
 
-  enableSmartShuffle: (songs, affinityData) => {
+  enableSmartShuffle: async (songs, affinityData) => {
     const state = get();
     const currentQueue = state.queue;
     const currentSong = state.currentSong;
@@ -252,12 +254,58 @@ export const usePlayerStore = create((set, get) => ({
     const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
     const pool = songs || originalQueue;
 
-    // Apply smart algorithm
-    const shuffled = applyShuffleAlgorithm(pool, affinityData, { 
-      maxQueue: 50, 
-      avoidRecent: true, 
-      seedSong: currentSong 
+    const maxQueue = 50;
+    const localFallback = () => applyShuffleAlgorithm(pool, affinityData, {
+      maxQueue,
+      avoidRecent: true,
+      seedSong: currentSong
     });
+
+    let shuffled = null;
+    const shuffleUrl = useSettingsStore.getState().localShuffleUrl;
+    if (shuffleUrl) {
+      try {
+        const service = new ShuffleApiService(shuffleUrl);
+        const count = Math.min(15, pool.length);
+        const recommendations = await service.getNext({
+          currentSong,
+          candidates: pool,
+          count
+        });
+
+        const ordered = mapRecommendationsToSongs(recommendations, pool);
+        const usedIds = new Set(ordered.map((song) => song.id));
+        const seedSong = currentSong && pool.find((song) => song.id === currentSong.id) ? currentSong : null;
+
+        const result = [];
+        if (seedSong) {
+          result.push(seedSong);
+          usedIds.add(seedSong.id);
+        }
+
+        ordered.forEach((song) => {
+          if (!usedIds.has(song.id)) {
+            result.push(song);
+            usedIds.add(song.id);
+          }
+        });
+
+        const remainingPool = pool.filter((song) => !usedIds.has(song.id));
+        const filler = applyShuffleAlgorithm(remainingPool, affinityData, {
+          maxQueue: Math.max(0, maxQueue - result.length),
+          avoidRecent: true,
+          seedSong: null
+        });
+
+        shuffled = [...result, ...filler].slice(0, maxQueue);
+      } catch (error) {
+        shuffled = null;
+      }
+    }
+
+    if (!shuffled || shuffled.length === 0) {
+      shuffled = localFallback();
+    }
 
     set({
       shuffleMode: 'smart',
@@ -342,14 +390,29 @@ usePlayerStore.subscribe((state, prevState) => {
   if (!prevState || isChanged) {
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
+      const sanitizeSong = (song) => {
+        if (!song) return null;
+        return {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          artistId: song.artistId,
+          album: song.album,
+          coverArt: song.coverArt,
+          duration: song.duration,
+          year: song.year,
+          genre: song.genre
+        };
+      };
+
       const persistData = {
-        queue: state.queue,
+        queue: Array.isArray(state.queue) ? state.queue.map(sanitizeSong) : [],
         currentIndex: state.currentIndex,
-        currentSong: state.currentSong,
+        currentSong: sanitizeSong(state.currentSong),
         volume: state.volume,
         shuffleEnabled: state.shuffleEnabled,
         shuffleMode: state.shuffleMode,
-        originalQueue: state.originalQueue,
+        originalQueue: Array.isArray(state.originalQueue) ? state.originalQueue.map(sanitizeSong) : [],
         repeatMode: state.repeatMode
       };
       localStorage.setItem('navivibe-player-queue', JSON.stringify(persistData));

@@ -11,12 +11,21 @@ import { Button } from '../components/shared/Button';
 import { createSubsonicClient, NetworkException, AuthException, ServerException } from '../api/subsonic';
 
 export const SettingsPage = () => {
-  const { serverUrl, username: storeUsername, password: storePassword, clearConfig, setServerConfig } = useSettingsStore();
+  const {
+    serverUrl,
+    username: storeUsername,
+    password: storePassword,
+    localShuffleUrl,
+    clearConfig,
+    setServerConfig,
+    updateSettings
+  } = useSettingsStore();
   const navigate = useNavigate();
 
   const [url, setUrl] = useState(serverUrl || '');
   const [username, setUsername] = useState(storeUsername || '');
   const [password, setPassword] = useState(storePassword || '');
+  const [shuffleUrl, setShuffleUrl] = useState(localShuffleUrl || '');
   
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -25,7 +34,8 @@ export const SettingsPage = () => {
     setUrl(serverUrl || '');
     setUsername(storeUsername || '');
     setPassword(storePassword || '');
-  }, [serverUrl, storeUsername, storePassword]);
+    setShuffleUrl(localShuffleUrl || '');
+  }, [serverUrl, storeUsername, storePassword, localShuffleUrl]);
 
   const handleLogout = () => {
     clearConfig();
@@ -65,6 +75,7 @@ export const SettingsPage = () => {
     const formattedUrl = url.trim().replace(/\/$/, '');
     const config = { serverUrl: formattedUrl, username: username.trim(), password };
     setServerConfig(config);
+    updateSettings({ localShuffleUrl: shuffleUrl.trim().replace(/\/$/, '') });
   };
 
   return (
@@ -114,6 +125,20 @@ export const SettingsPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-paper-warm border border-ink/20 rounded-md text-ink font-body focus:outline-none focus:border-coral transition-colors"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-sans font-medium text-ink-mute mb-1">Local Shuffle URL</label>
+            <input
+              type="url"
+              value={shuffleUrl}
+              onChange={(e) => setShuffleUrl(e.target.value)}
+              placeholder="http://localhost:5000"
+              className="w-full px-4 py-3 bg-paper-warm border border-ink/20 rounded-md text-ink font-body focus:outline-none focus:border-coral transition-colors"
+            />
+            <p className="mt-1 text-xs text-ink-faint font-sans">
+              Optional. Uses local AI shuffle server when available; falls back to on-device scoring.
+            </p>
           </div>
 
           {testResult && (

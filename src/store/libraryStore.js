@@ -12,6 +12,12 @@ export const useLibraryStore = create((set, get) => ({
   recentAlbums: [],
   frequentAlbums: [],
   starredAlbums: [],
+  starred: {
+    albums: [],
+    artists: [],
+    songs: [],
+  },
+  isStarredLoading: false,
   searchResults: { artists: [], albums: [], songs: [] },
   playlists: [],
 
@@ -172,6 +178,104 @@ export const useLibraryStore = create((set, get) => ({
       set({ error: error.message, isLoading: false });
     }
   },
+
+  fetchStarred: async (client) => {
+    set({ isStarredLoading: true, error: null });
+    try {
+      const data = await client.getStarred2();
+      set({ 
+        starred: {
+          albums: data.starred2?.album || [],
+          artists: data.starred2?.artist || [],
+          songs: data.starred2?.song || []
+        },
+        isStarredLoading: false 
+      });
+    } catch (error) {
+      set({ error: error.message, isStarredLoading: false });
+    }
+  },
+
+  toggleStarAlbum: async (client, album) => {
+    const isStarred = get().isAlbumStarred(album.id);
+    // Optimistic update
+    set((state) => ({
+      starred: {
+        ...state.starred,
+        albums: isStarred 
+          ? state.starred.albums.filter(a => a.id !== album.id)
+          : [...state.starred.albums, album]
+      }
+    }));
+    try {
+      if (isStarred) await client.unstar(album.id, 'album');
+      else await client.star(album.id, 'album');
+    } catch (error) {
+      // Revert on error
+      set((state) => ({
+        starred: {
+          ...state.starred,
+          albums: isStarred 
+            ? [...state.starred.albums, album]
+            : state.starred.albums.filter(a => a.id !== album.id)
+        }
+      }));
+    }
+  },
+
+  toggleStarArtist: async (client, artist) => {
+    const isStarred = get().isArtistStarred(artist.id);
+    set((state) => ({
+      starred: {
+        ...state.starred,
+        artists: isStarred 
+          ? state.starred.artists.filter(a => a.id !== artist.id)
+          : [...state.starred.artists, artist]
+      }
+    }));
+    try {
+      if (isStarred) await client.unstar(artist.id, 'artist');
+      else await client.star(artist.id, 'artist');
+    } catch (error) {
+      set((state) => ({
+        starred: {
+          ...state.starred,
+          artists: isStarred 
+            ? [...state.starred.artists, artist]
+            : state.starred.artists.filter(a => a.id !== artist.id)
+        }
+      }));
+    }
+  },
+
+  toggleStarSong: async (client, song) => {
+    const isStarred = get().isSongStarred(song.id);
+    set((state) => ({
+      starred: {
+        ...state.starred,
+        songs: isStarred 
+          ? state.starred.songs.filter(s => s.id !== song.id)
+          : [...state.starred.songs, song]
+      }
+    }));
+    try {
+      if (isStarred) await client.unstar(song.id, 'song');
+      else await client.star(song.id, 'song');
+    } catch (error) {
+      set((state) => ({
+        starred: {
+          ...state.starred,
+          songs: isStarred 
+            ? [...state.starred.songs, song]
+            : state.starred.songs.filter(s => s.id !== song.id)
+        }
+      }));
+    }
+  },
+
+  isAlbumStarred: (id) => get().starred.albums.some(a => a.id === id),
+  isArtistStarred: (id) => get().starred.artists.some(a => a.id === id),
+  isSongStarred: (id) => get().starred.songs.some(s => s.id === id),
 
   invalidate: () => set({ 
     albums: [], artists: [], recentAlbums: [], frequentAlbums: [], starredAlbums: [],

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react'
+import { ChevronUp } from 'lucide-react'
 import { cn } from './cn'
 
 // -------------------- Helpers / types removed for JSX --------------------
@@ -430,7 +431,7 @@ function ScalesMixer({ isPlaying, getFrequencyData }) {
   )
 }
 
-function Disc({ layers, isPlaying, isZoomed, trackKey, direction, onZoomToggle }) {
+function Disc({ layers, isPlaying, isZoomed, trackKey, direction, onZoomToggle, onExpand, showExpandHint }) {
   const spinRef = useRef(null)
   const rotRef = useRef(0)
   const velRef = useRef(0)
@@ -477,8 +478,14 @@ function Disc({ layers, isPlaying, isZoomed, trackKey, direction, onZoomToggle }
     el.style.transform = `scale(1.01) rotate(${rotRef.current + b}deg)`
   })
 
+  const handleClick = (e) => {
+    e.stopPropagation()
+    if (onExpand) onExpand()
+    else onZoomToggle()
+  }
+
   return (
-    <div className={`mask ${isZoomed ? 'is-zoomed' : ''}`} onClick={(e) => { e.stopPropagation(); onZoomToggle(); }}>
+    <div className={`mask ${isZoomed ? 'is-zoomed' : ''}`} onClick={handleClick}>
       <div className="spin" ref={spinRef}>
         {layers.map((l, i) => {
           const isNewest = i === layers.length - 1
@@ -486,14 +493,28 @@ function Disc({ layers, isPlaying, isZoomed, trackKey, direction, onZoomToggle }
           return <img key={l.id} src={l.track.cover} alt={`${l.track.title} — ${l.track.artist}`} className={cls} draggable={false} />
         })}
       </div>
+      {showExpandHint ? (
+        <div className="expand-indicator" aria-hidden="true">
+          <ChevronUp size={18} />
+        </div>
+      ) : null}
       <div className="hole"><div className="hole-inner" /></div>
     </div>
   )
 }
 
-function TrackInfo({ layers }) {
+function TrackInfo({ layers, onExpand }) {
   return (
-    <div className="track-info">
+    <div
+      className={`track-info ${onExpand ? 'is-clickable' : ''}`}
+      onClick={onExpand}
+      role={onExpand ? 'button' : undefined}
+      tabIndex={onExpand ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!onExpand) return
+        if (e.key === 'Enter') onExpand()
+      }}
+    >
       {layers.map((l, i) => {
         const isNewest = i === layers.length - 1
         const dx = l.dir === 'next' ? 14 : l.dir === 'prev' ? -14 : 0
@@ -511,7 +532,7 @@ function TrackInfo({ layers }) {
   )
 }
 
-export function MusicPlayer({ tracks, crossOrigin, playerOverride }) {
+export function MusicPlayer({ tracks, crossOrigin, playerOverride, onExpand }) {
   const safeTracks = useMemo(() => normalizeTracks(tracks), [tracks])
   const player = playerOverride || useAudioPlayer(safeTracks)
   const [isZoomed, setIsZoomed] = useState(false)
@@ -564,10 +585,19 @@ export function MusicPlayer({ tracks, crossOrigin, playerOverride }) {
   return (
     <div className={`card ${player.state.isPlaying ? 'is-playing' : ''} ${isZoomed ? 'is-zoomed' : ''}`} onClick={(e) => { if (!(e.target).closest('.mask')) setIsZoomed(false) }}>
       {player.audioRef ? <audio ref={player.audioRef} preload="metadata" crossOrigin={crossOrigin} /> : null}
-      <Disc layers={layers} isPlaying={player.state.isPlaying} isZoomed={isZoomed} trackKey={player.state.currentIndex} direction={player.state.direction} onZoomToggle={() => setIsZoomed((z) => !z)} />
+      <Disc
+        layers={layers}
+        isPlaying={player.state.isPlaying}
+        isZoomed={isZoomed}
+        trackKey={player.state.currentIndex}
+        direction={player.state.direction}
+        onZoomToggle={() => setIsZoomed((z) => !z)}
+        onExpand={onExpand}
+        showExpandHint={!!onExpand}
+      />
       <div className="info">
         <ScalesMixer isPlaying={player.state.isPlaying} getFrequencyData={player.getFrequencyData} />
-        <TrackInfo layers={layers} />
+        <TrackInfo layers={layers} onExpand={onExpand} />
         <ProgressBar currentTime={player.currentTime} duration={player.duration} onSeek={player.seek} />
         <Controls isPlaying={player.state.isPlaying} shuffled={player.state.shuffled} loopMode={player.state.loopMode} onToggle={player.toggle} onNext={player.next} onPrev={player.prev} onShuffle={player.toggleShuffle} onLoop={player.cycleLoop} />
       </div>

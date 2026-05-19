@@ -16,6 +16,13 @@ export const ENDPOINTS = {
   UNSTAR: 'unstar.view',
   GET_RANDOM_SONGS: 'getRandomSongs.view',
   GET_PLAYLISTS: 'getPlaylists.view',
+  GET_PLAYLIST: 'getPlaylist.view',
+  CREATE_PLAYLIST: 'createPlaylist.view',
+  UPDATE_PLAYLIST: 'updatePlaylist.view',
+  DELETE_PLAYLIST: 'deletePlaylist.view',
+  GET_STARRED2: 'getStarred2.view',
+  GET_LYRICS: 'getLyrics.view',
+  GET_LYRICS_BY_SONG_ID: 'getLyricsBySongId.view',
   STREAM: 'stream.view',
   GET_COVER_ART: 'getCoverArt.view'
 };

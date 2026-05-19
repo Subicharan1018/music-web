@@ -60,7 +60,11 @@ class SubsonicClient {
     
     Object.entries({ ...authParams, ...extraParams }).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        url.searchParams.append(key, value);
+        if (Array.isArray(value)) {
+          value.forEach(v => url.searchParams.append(key, v));
+        } else {
+          url.searchParams.append(key, value);
+        }
       }
     });
     
@@ -150,6 +154,41 @@ class SubsonicClient {
 
   async getPlaylists() {
     return this._request(ENDPOINTS.GET_PLAYLISTS);
+  }
+
+  async getPlaylist(id) {
+    return this._request(ENDPOINTS.GET_PLAYLIST, { id });
+  }
+
+  async createPlaylist(name, songId = []) {
+    return this._request(ENDPOINTS.CREATE_PLAYLIST, { name, songId });
+  }
+
+  async updatePlaylist(playlistId, { name, comment, public: isPublic, songIdToAdd = [], songIndexToRemove = [] }) {
+    return this._request(ENDPOINTS.UPDATE_PLAYLIST, { 
+      playlistId, 
+      name, 
+      comment, 
+      public: isPublic, 
+      songIdToAdd, 
+      songIndexToRemove 
+    });
+  }
+
+  async deletePlaylist(id) {
+    return this._request(ENDPOINTS.DELETE_PLAYLIST, { id });
+  }
+
+  async getStarred2() {
+    return this._request(ENDPOINTS.GET_STARRED2);
+  }
+
+  async getLyrics(artist, title) {
+    return this._request(ENDPOINTS.GET_LYRICS, { artist, title });
+  }
+
+  async getLyricsBySongId(id) {
+    return this._request(ENDPOINTS.GET_LYRICS_BY_SONG_ID, { id });
   }
 
   stream(songId, options = {}) {

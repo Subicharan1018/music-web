@@ -13,6 +13,8 @@ export const useSettingsStore = create(
       username: '',
       password: '',
       isConfigured: false,
+
+      localShuffleUrl: '',
       
       transcodeFormat: 'mp3',
       transcodeBitrate: '320',

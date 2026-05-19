@@ -1,8 +1,1 @@
-/home/subi/Documents/aurial-mine/README.md
 /home/subi/Documents/aurial-mine/index.html
-/home/subi/Documents/aurial-mine/task_phase3.md
-/home/subi/Documents/aurial-mine/public/favicon.svg
-/home/subi/Documents/aurial-mine/public/icons.svg
-/home/subi/Documents/aurial-mine/src/assets/hero.png
-/home/subi/Documents/aurial-mine/src/assets/react.svg
-/home/subi/Documents/aurial-mine/src/assets/vite.svg

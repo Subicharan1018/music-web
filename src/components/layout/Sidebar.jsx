@@ -7,9 +7,10 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useUIStore } from '../../store/uiStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { usePlaylistStore } from '../../store/playlistStore';
 import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search } from 'lucide-react';
 
-const NavItem = ({ to, icon: Icon, label, collapsed }) => (
+const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
@@ -22,15 +23,21 @@ const NavItem = ({ to, icon: Icon, label, collapsed }) => (
     title={collapsed ? label : undefined}
   >
     {collapsed ? (
-      <div className="w-full flex justify-center">
+      <div className="w-full flex justify-center relative">
         <span className="font-sans text-xs uppercase tracking-[0.2em] text-ink-faint origin-center rotate-[-90deg] whitespace-nowrap inline-block w-6 h-16 flex items-center justify-center">
           {label}
         </span>
+        {badge !== undefined && (
+          <span className="absolute top-0 right-2 w-1.5 h-1.5 rounded-full bg-coral"></span>
+        )}
       </div>
     ) : (
       <>
         <Icon size={15} className="shrink-0" />
-        <span className="font-sans text-sm truncate">{label}</span>
+        <span className="font-sans text-sm truncate flex-1">{label}</span>
+        {badge !== undefined && (
+          <span className="font-mono text-[10px] text-ink-faint mr-4">{badge}</span>
+        )}
       </>
     )}
   </NavLink>
@@ -50,6 +57,7 @@ const NavSection = ({ title, collapsed, children }) => (
 export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { serverUrl } = useSettingsStore();
+  const { playlists } = usePlaylistStore();
   const isConnected = !!serverUrl;
 
   return (
@@ -79,7 +87,7 @@ export const Sidebar = () => {
           <NavItem to="/library" icon={Library} label="Library" collapsed={sidebarCollapsed} />
           <NavItem to="/albums" icon={Home} label="Albums" collapsed={sidebarCollapsed} />
           <NavItem to="/artists" icon={Mic2} label="Artists" collapsed={sidebarCollapsed} />
-          <NavItem to="/playlists" icon={ListMusic} label="Playlists" collapsed={sidebarCollapsed} />
+          <NavItem to="/playlists" icon={ListMusic} label="Playlists" collapsed={sidebarCollapsed} badge={playlists?.length > 0 ? playlists.length : undefined} />
           <NavItem to="/favorites" icon={Heart} label="Favorites" collapsed={sidebarCollapsed} />
         </NavSection>
         
