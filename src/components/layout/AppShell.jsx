@@ -47,7 +47,7 @@ export const AppShell = () => {
         <Sidebar />
         
         <main 
-          className={`flex-1 transition-all duration-300 overflow-y-auto pb-player-bar z-10 pt-[44px] pr-9 ${
+          className={`main-content flex-1 transition-all duration-300 overflow-y-auto pb-player-bar z-10 pt-[44px] pr-9 ${
             sidebarCollapsed ? 'ml-[calc(64px+36px)]' : 'ml-[calc(240px+36px)]'
           }`}
         >

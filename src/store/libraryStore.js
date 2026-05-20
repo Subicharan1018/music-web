@@ -21,6 +21,11 @@ export const useLibraryStore = create((set, get) => ({
   searchResults: { artists: [], albums: [], songs: [] },
   playlists: [],
 
+  // Aliases for user expectation
+  get starredSongs() { return get().starred.songs; },
+  get starredAlbums() { return get().starred.albums; },
+  lastFetched: null,
+
   // Pagination
   albumsPage: 0,
   albumsHasMore: true,
@@ -38,7 +43,7 @@ export const useLibraryStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const data = await client.getArtists();
-      set({ artists: data.artists?.index || [], isLoading: false });
+      set({ artists: data.artists?.index || [], isLoading: false, lastFetched: Date.now() });
     } catch (error) {
       set({ error: error.message, isLoading: false });
     }
@@ -78,6 +83,7 @@ export const useLibraryStore = create((set, get) => ({
           update.albumsPage = reset ? 1 : prev.albumsPage + 1;
           update.albumsHasMore = hasMore;
         }
+        update.lastFetched = Date.now();
         return update;
       });
     } catch (error) {

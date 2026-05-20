@@ -14,6 +14,9 @@ import { ProgressBar } from '../player/ProgressBar';
 import { VolumeSlider } from '../player/VolumeSlider';
 import { AddToPlaylistDialog } from '../playlists/AddToPlaylistDialog';
 import { FluidBackground } from './FluidBackground';
+import { AIShuffleButton } from '../shared/AIShuffleButton';
+import { gsap } from '../../lib/gsap';
+import { useRef } from 'react';
 
 const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23e6dcc4"/><circle cx="200" cy="200" r="120" fill="%23d3c6a5"/><circle cx="200" cy="200" r="18" fill="%23b9aa87"/></svg>';
 
@@ -81,8 +84,27 @@ export const NowPlayingOverlay = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nowPlayingExpanded]);
 
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!nowPlayingExpanded || !containerRef.current) return;
+    
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-reveal', {
+        y: 40,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.1,
+        ease: 'power3.out'
+      });
+    }, containerRef);
+    
+    return () => ctx.revert();
+  }, [nowPlayingExpanded, currentSong?.id]); // Re-animate on song change too if expanded? No, only on expand. Actually, maybe on expand. We'll leave it as [nowPlayingExpanded].
+
   return (
     <div
+      ref={containerRef}
       className={`fixed inset-0 z-[60] transition-transform duration-[350ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
         nowPlayingExpanded ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
       }`}
@@ -105,7 +127,7 @@ export const NowPlayingOverlay = () => {
         <div className="h-full w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-10">
           <section className="flex flex-col gap-6">
             <div className="flex flex-col items-center lg:items-start gap-6">
-              <div className="w-full max-w-sm rounded-xl shadow-2xl overflow-hidden bg-ink/20">
+              <div className="stagger-reveal w-full max-w-sm rounded-xl shadow-2xl overflow-hidden bg-ink/20">
                 <img
                   src={coverUrl}
                   alt={currentSong?.title || 'Album cover'}
@@ -114,7 +136,7 @@ export const NowPlayingOverlay = () => {
                 />
               </div>
 
-              <div className="text-center lg:text-left">
+              <div className="stagger-reveal text-center lg:text-left">
                 <h1 className="font-serif text-4xl italic text-paper leading-tight">
                   {currentSong?.title || 'No track selected'}
                 </h1>
@@ -128,7 +150,7 @@ export const NowPlayingOverlay = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-center lg:justify-start gap-6">
+            <div className="stagger-reveal flex items-center justify-center lg:justify-start gap-6">
               <button
                 type="button"
                 onClick={prev}
@@ -155,22 +177,13 @@ export const NowPlayingOverlay = () => {
               </button>
             </div>
 
-            <div className="bg-paper/10 border border-paper/10 rounded-xl px-4 py-3">
+            <div className="stagger-reveal bg-paper/10 border border-paper/10 rounded-xl px-4 py-3">
               <ProgressBar />
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="stagger-reveal flex flex-wrap items-center gap-4">
               <VolumeSlider className="text-paper" />
-              <button
-                type="button"
-                onClick={toggleShuffle}
-                className={`flex items-center gap-2 text-sm font-sans ${
-                  shuffleMode === 'none' ? 'text-paper/60' : 'text-paper'
-                }`}
-              >
-                <Shuffle size={18} />
-                Shuffle
-              </button>
+              <AIShuffleButton className="text-paper hover:text-paper" />
               <button
                 type="button"
                 onClick={cycleLoop}
@@ -183,7 +196,7 @@ export const NowPlayingOverlay = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="stagger-reveal flex items-center gap-4">
               <button
                 type="button"
                 onClick={() => {
@@ -208,7 +221,7 @@ export const NowPlayingOverlay = () => {
             </div>
           </section>
 
-          <section className="flex flex-col bg-ink/20 border border-paper/10 rounded-2xl p-6 overflow-hidden">
+          <section className="stagger-reveal flex flex-col bg-ink/20 border border-paper/10 rounded-2xl p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-serif text-2xl text-paper">Lyrics</h2>
               {isSynced ? (

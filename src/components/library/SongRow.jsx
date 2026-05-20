@@ -79,7 +79,7 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
       <div 
         ref={setNodeRef}
         style={style}
-        className={`group flex items-center gap-3 py-2 px-2 -mx-2 rounded cursor-default ${
+        className={`reveal-item group flex items-center gap-3 py-2 px-2 -mx-2 rounded cursor-default ${
           isCurrent ? 'bg-paper-warm' : 'hover:bg-ink/5 transition-colors'
         } ${isDragging ? 'shadow-md bg-paper' : ''}`}
         onDoubleClick={handleDoubleClick}
@@ -106,7 +106,7 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
 
         {(context === 'playlist' || context === 'favorites') && (
           <div className="w-6 h-6 bg-paper-dark rounded-sm flex-shrink-0 overflow-hidden">
-            {coverUrl && <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />}
+            {coverUrl && <img src={coverUrl} alt="Cover" loading="lazy" className="w-full h-full object-cover" />}
           </div>
         )}
         

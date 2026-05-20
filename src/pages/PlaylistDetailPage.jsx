@@ -11,6 +11,7 @@ import { usePlayerStore } from '../store/playerStore';
 import { usePlayAction } from '../hooks/usePlayAction';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { SongRow } from '../components/library/SongRow';
+import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Play, Sparkles, Trash2, ArrowLeft } from 'lucide-react';
@@ -59,7 +60,7 @@ export const PlaylistDetailPage = () => {
 
   const handleSmartShuffle = () => {
     if (openPlaylist?.entry?.length > 0) {
-      void enableSmartShuffle(openPlaylist.entry);
+      void enableSmartShuffle(openPlaylist.entry, { playlistName: openPlaylist.name });
     }
   };
 
@@ -121,6 +122,15 @@ export const PlaylistDetailPage = () => {
     }
   };
 
+  const songs = openPlaylist?.entry || [];
+  const totalDuration = songs.reduce((acc, song) => acc + (song.duration || 0), 0);
+
+  const containerRef = useRef(null);
+  useGSAPScrollReveal(containerRef, {
+    selector: '.reveal-item',
+    dependencies: [songs]
+  });
+
   if (isLoading && !openPlaylist) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
@@ -131,11 +141,8 @@ export const PlaylistDetailPage = () => {
 
   if (!openPlaylist) return null;
 
-  const songs = openPlaylist.entry || [];
-  const totalDuration = songs.reduce((acc, song) => acc + (song.duration || 0), 0);
-
   return (
-    <div className="animate-in fade-in duration-500 pb-32">
+    <div ref={containerRef} className="animate-in fade-in duration-500 pb-32 h-full overflow-y-auto no-scrollbar">
       <button 
         onClick={() => navigate('/playlists')}
         className="flex items-center gap-2 text-ink-mute hover:text-ink font-sans text-sm mb-8 transition-colors"

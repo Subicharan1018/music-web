@@ -21,6 +21,7 @@ const loadPersistedAffinity = () => {
     genres: {},
     songs: {},
     hourBuckets: new Array(24).fill(0),
+    playHistory: [], // Array of song IDs
   };
 };
 
@@ -48,6 +49,7 @@ export const useAffinityStore = create((set, get) => ({
   genres: initialState.genres,
   songs: initialState.songs,
   hourBuckets: initialState.hourBuckets,
+  playHistory: initialState.playHistory || [],
 
   recordPlay: (song, listenMs) => {
     set((state) => {
@@ -58,6 +60,7 @@ export const useAffinityStore = create((set, get) => ({
       const newGenres = { ...state.genres };
       const newSongs = { ...state.songs };
       const newHourBuckets = [...state.hourBuckets];
+      let newPlayHistory = [...state.playHistory];
 
       const artistId = song.artistId || song.artist;
       if (artistId) {
@@ -90,6 +93,10 @@ export const useAffinityStore = create((set, get) => ({
           totalListenMs: s.totalListenMs + listenMs,
           lastPlayed: now,
         };
+        newPlayHistory.push(songId);
+        if (newPlayHistory.length > 500) {
+          newPlayHistory = newPlayHistory.slice(-500);
+        }
       }
 
       newHourBuckets[hour] += 1;
@@ -99,6 +106,7 @@ export const useAffinityStore = create((set, get) => ({
         genres: enforceCap(newGenres),
         songs: enforceCap(newSongs),
         hourBuckets: newHourBuckets,
+        playHistory: newPlayHistory,
       };
     });
   },
@@ -170,6 +178,7 @@ export const useAffinityStore = create((set, get) => ({
       genres: {},
       songs: {},
       hourBuckets: new Array(24).fill(0),
+      playHistory: [],
     });
   },
 }));
@@ -187,6 +196,7 @@ useAffinityStore.subscribe((state, prevState) => {
         genres: state.genres,
         songs: state.songs,
         hourBuckets: state.hourBuckets,
+        playHistory: state.playHistory,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistData));
     }, 5000);

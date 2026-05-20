@@ -10,6 +10,8 @@ import { usePlayAction } from '../hooks/usePlayAction';
 import { paletteService } from '../services/PaletteService';
 import { SongRow } from '../components/library/SongRow';
 import { SkeletonRow } from '../components/shared/SkeletonRow';
+import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useRef } from 'react';
 
 export const AlbumDetailPage = () => {
   const { id } = useParams();
@@ -76,8 +78,14 @@ export const AlbumDetailPage = () => {
 
   const totalDuration = album?.song?.reduce((acc, s) => acc + s.duration, 0) || 0;
 
+  const containerRef = useRef(null);
+  useGSAPScrollReveal(containerRef, {
+    selector: '.reveal-item',
+    dependencies: [album, isLoading]
+  });
+
   return (
-    <div className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
+    <div ref={containerRef} className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
       {isLoading && !album ? (
         <div className="flex gap-12">
           <div className="w-60 h-60 shrink-0 bg-ink/5 animate-shimmer rounded-md" />

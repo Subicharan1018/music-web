@@ -55,7 +55,7 @@ const SortableQueueItem = ({ song, index, isCurrent, playSong, removeSong }) => 
         onDoubleClick={() => playSong(song)}
       >
         <div className="w-8 h-8 bg-paper-dark rounded-sm flex-shrink-0 overflow-hidden">
-          {coverUrl && <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />}
+          {coverUrl && <img src={coverUrl} alt="Cover" loading="lazy" className="w-full h-full object-cover" />}
         </div>
         
         <div className="flex-1 min-w-0">

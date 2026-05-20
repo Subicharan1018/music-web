@@ -3,24 +3,7 @@
  * Pure service for estimating and caching song BPMs.
  */
 
-const GENRE_BPM_MAP = {
-  'classical': 60,
-  'ambient': 70,
-  'blues': 80,
-  'reggae': 90,
-  'hip-hop': 90,
-  'r&b': 95,
-  'soul': 100,
-  'funk': 105,
-  'country': 110,
-  'folk': 110,
-  'pop': 120,
-  'jazz': 120,
-  'electronic': 128,
-  'rock': 130,
-  'metal': 160,
-  'punk': 160
-};
+import { GENRE_BPM_MAP } from '../lib/constants';
 
 const DEFAULT_BPM = 110;
 
@@ -35,13 +18,13 @@ export function estimateBpmFromGenre(genre) {
   const normalizedGenre = genre.toLowerCase();
   
   // Direct match
-  if (GENRE_BPM_MAP[normalizedGenre]) {
-    return GENRE_BPM_MAP[normalizedGenre];
+  if (GENRE_BPM_MAP[normalizedGenre] || GENRE_BPM_MAP[genre]) {
+    return GENRE_BPM_MAP[normalizedGenre] || GENRE_BPM_MAP[genre];
   }
 
   // Partial match
   for (const [key, bpm] of Object.entries(GENRE_BPM_MAP)) {
-    if (normalizedGenre.includes(key)) {
+    if (normalizedGenre.includes(key.toLowerCase())) {
       return bpm;
     }
   }
@@ -67,11 +50,24 @@ export function getCachedBpm(songId, cache) {
  * @param {Map} cache 
  * @returns {Map} updated cache
  */
-export function cacheBpm(songId, bpm, cache) {
+export function cacheBpm(songId, bpm, cache, maxSize = 200) {
   if (!cache || !(cache instanceof Map)) {
     console.warn('cacheBpm requires a valid Map instance for cache');
     return cache;
   }
+  
+  // BUG 6 Fix: LRU Cache eviction
+  if (cache.has(songId)) {
+    cache.delete(songId); // Delete to push it to the end (most recently used)
+  }
+  
   cache.set(songId, bpm);
+  
+  // Enforce max size by dropping oldest (first entry in Map iterator)
+  if (cache.size > maxSize) {
+    const oldestKey = cache.keys().next().value;
+    cache.delete(oldestKey);
+  }
+  
   return cache;
 }

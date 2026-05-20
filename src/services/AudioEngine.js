@@ -6,6 +6,7 @@
 
 import { Howl } from 'howler';
 import ReplayGainService from './ReplayGainService';
+import ScrobbleService from './ScrobbleService';
 
 class AudioEngine {
   constructor({ onTrackEnd, onPositionUpdate, onStateChange, onSkip }) {
@@ -26,6 +27,8 @@ class AudioEngine {
     this.preventClipping = true;
 
     this.trackEndTimer = null;
+    this.progressTimer = null;
+    this._accumulatedTime = 0;
   }
 
   _calculateVolume(song) {
@@ -42,6 +45,7 @@ class AudioEngine {
   load(song, streamUrl, autoplay = true) {
     this._checkSkipCondition();
     this._cleanupActive();
+    this._accumulatedTime = 0;
     
     // If we already preloaded this exact song, swap it in
     if (this.preloadedHowl && this.preloadedSong?.id === song.id) {
@@ -81,9 +85,18 @@ class AudioEngine {
     howl.off('pause');
     howl.off('stop');
 
-    howl.on('play', () => this.onStateChange?.(true));
-    howl.on('pause', () => this.onStateChange?.(false));
-    howl.on('stop', () => this.onStateChange?.(false));
+    howl.on('play', () => {
+      this.onStateChange?.(true);
+      this._startProgressTimer();
+    });
+    howl.on('pause', () => {
+      this.onStateChange?.(false);
+      this._stopProgressTimer();
+    });
+    howl.on('stop', () => {
+      this.onStateChange?.(false);
+      this._stopProgressTimer();
+    });
 
     howl.on('end', () => {
       this.isNaturalEnd = true;
@@ -177,6 +190,31 @@ class AudioEngine {
     }
   }
 
+  _startProgressTimer() {
+    if (this.progressTimer) clearInterval(this.progressTimer);
+    this.progressTimer = setInterval(() => {
+      const pos = this.getCurrentPosition();
+      const dur = this.getDuration();
+      
+      this.onPositionUpdate?.(pos, dur);
+
+      if (this.activeSong && this._accumulatedTime !== Infinity) {
+        this._accumulatedTime += 0.5;
+        if (this._accumulatedTime >= dur * 0.5 || this._accumulatedTime >= 240) {
+          ScrobbleService.scrobble(this.activeSong.id);
+          this._accumulatedTime = Infinity; // Prevent double-scrobble
+        }
+      }
+    }, 500);
+  }
+
+  _stopProgressTimer() {
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = null;
+    }
+  }
+
   _cleanupActive() {
     if (this.activeHowl) {
       this.activeHowl.unload();
@@ -184,10 +222,12 @@ class AudioEngine {
     }
     this.activeSong = null;
     this.isNaturalEnd = false;
+    this._accumulatedTime = 0;
     if (this.trackEndTimer) {
       clearTimeout(this.trackEndTimer);
       this.trackEndTimer = null;
     }
+    this._stopProgressTimer();
   }
 
   _cleanupPreloaded() {

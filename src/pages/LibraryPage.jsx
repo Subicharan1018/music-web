@@ -7,6 +7,7 @@ import { useSubsonic } from '../hooks/useSubsonic';
 import { useLibraryStore } from '../store/libraryStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SkeletonCard } from '../components/shared/SkeletonCard';
+import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
 
 export const LibraryPage = () => {
   const client = useSubsonic();
@@ -81,8 +82,14 @@ export const LibraryPage = () => {
     );
   };
 
+  const containerRef = useRef(null);
+  useGSAPScrollReveal(containerRef, {
+    selector: '.reveal-item',
+    dependencies: [albums, recentAlbums, frequentAlbums, isLoading]
+  });
+
   return (
-    <div className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
+    <div ref={containerRef} className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
       {renderSection('Nº 01 · Recently Added', recentAlbums, true)}
       {renderSection('Nº 02 · Frequently Played', frequentAlbums, true)}
       {renderSection('Nº 03 · All Albums', albums, false)}

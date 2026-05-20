@@ -5,13 +5,16 @@
 
 import { create } from 'zustand';
 
-export const useUIStore = create((set) => ({
+export const useUIStore = create((set, get) => ({
   activeView: 'library',
   sidebarCollapsed: false,
   nowPlayingExpanded: false,
   queueOpen: false,
   activeModal: null,
   toasts: [],
+  notification: null,
+
+  get nowPlayingOpen() { return get().nowPlayingExpanded; },
 
   setView: (view) => set({ activeView: view }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -25,9 +28,10 @@ export const useUIStore = create((set) => ({
     const newToast = { id, message, type };
     // Cap at 3 toasts
     const newToasts = [...state.toasts, newToast].slice(-3);
-    return { toasts: newToasts };
+    return { toasts: newToasts, notification: newToast };
   }),
   removeToast: (id) => set((state) => ({
-    toasts: state.toasts.filter(t => t.id !== id)
+    toasts: state.toasts.filter(t => t.id !== id),
+    notification: state.notification?.id === id ? null : state.notification
   }))
 }));
