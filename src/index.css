@@ -152,6 +152,26 @@
   100% { transform: translate(-6%, -6%) scale(1.06); }
 }
 
+/* Vinyl ring rotation — used by NowPlayingOverlay album art */
+@keyframes vinyl-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.vinyl-spin {
+  animation: vinyl-rotate 20s linear infinite;
+}
+
+.vinyl-spin.paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-spin {
+    animation: none;
+  }
+}
+
 /* tw-animate-css import removed — not installed in this environment. */
 
 /* MusicPlayer Widget Styles */

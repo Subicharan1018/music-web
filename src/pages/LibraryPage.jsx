@@ -1,13 +1,19 @@
 /**
  * LibraryPage.jsx
- * Displays library sections: Recently Added, Frequently Played, and All Albums.
+ * Displays library sections: Recommended For You, Recently Added, Frequently Played, All Albums.
+ * Phase 6: Recommendations section added above, loaded after initial paint.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useSubsonic } from '../hooks/useSubsonic';
 import { useLibraryStore } from '../store/libraryStore';
+import { useAffinityStore } from '../store/affinityStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SkeletonCard } from '../components/shared/SkeletonCard';
 import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { RecommendationsWidget } from '../components/stats/RecommendationsWidget';
+import { recommendationService } from '../services/RecommendationService';
+
+const MIN_PLAYS_FOR_RECS = 5;
 
 export const LibraryPage = () => {
   const client = useSubsonic();
@@ -15,8 +21,23 @@ export const LibraryPage = () => {
     albums, recentAlbums, frequentAlbums, 
     isLoading, albumsHasMore, fetchAlbums 
   } = useLibraryStore();
-  
+
+  // Affinity state — read before any returns
+  const recentPlays    = useAffinityStore((s) => s.recentPlays);
+  const affinityState  = useAffinityStore.getState;
+
+  const [recommendations, setRecommendations] = useState([]);
+  const containerRef = useRef(null);
   const observerRef = useRef();
+  const recServiceRef = useRef(recommendationService);
+
+  const hasEnoughPlays = recentPlays.length >= MIN_PLAYS_FOR_RECS;
+
+  // Hook always called — before any returns — consistent order
+  useGSAPScrollReveal(containerRef, {
+    selector: '.reveal-item',
+    dependencies: [albums, recentAlbums, frequentAlbums, isLoading, recommendations],
+  });
 
   useEffect(() => {
     if (!client) return;
@@ -28,6 +49,22 @@ export const LibraryPage = () => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);
+
+  // Load recommendations after initial paint — never blocks render
+  useEffect(() => {
+    if (!hasEnoughPlays || albums.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const snapshot = affinityState();
+      const recs = recServiceRef.current.recommend(albums, snapshot, {
+        limit: 20,
+        excludeRecent: true,
+      });
+      setRecommendations(recs);
+    }, 300); // slight defer so album grid renders first
+
+    return () => clearTimeout(timer);
+  }, [hasEnoughPlays, albums, affinityState]);
 
   const lastElementRef = useCallback(node => {
     if (isLoading) return;
@@ -42,9 +79,11 @@ export const LibraryPage = () => {
     if (node) observerRef.current.observe(node);
   }, [isLoading, albumsHasMore, client, fetchAlbums]);
 
+  const affinitySnapshot = useMemo(() => affinityState(), [affinityState, recentPlays.length]);
+
   const renderSection = (title, items, isHorizontal = false) => {
     return (
-      <div className="flex flex-col gap-4 mb-12">
+      <div className="flex flex-col gap-4 mb-12 reveal-item">
         <div className="flex justify-between items-end border-b border-ink/10 pb-2">
           <div className="font-sans text-[13px] font-medium text-ink-mute uppercase tracking-widest">
             {title}
@@ -82,14 +121,25 @@ export const LibraryPage = () => {
     );
   };
 
-  const containerRef = useRef(null);
-  useGSAPScrollReveal(containerRef, {
-    selector: '.reveal-item',
-    dependencies: [albums, recentAlbums, frequentAlbums, isLoading]
-  });
-
   return (
     <div ref={containerRef} className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
+      
+      {/* Nº 00 · RECOMMENDED FOR YOU — only after 5+ plays */}
+      {hasEnoughPlays && recommendations.length > 0 && (
+        <div className="mb-12 reveal-item">
+          <div className="flex justify-between items-end border-b border-ink/10 pb-2 mb-6">
+            <div className="font-sans text-[13px] font-medium text-ink-mute uppercase tracking-widest">
+              Nº 00 · Recommended For You
+            </div>
+          </div>
+          <RecommendationsWidget
+            recommendations={recommendations}
+            affinitySnapshot={affinitySnapshot}
+            allSongs={albums}
+          />
+        </div>
+      )}
+
       {renderSection('Nº 01 · Recently Added', recentAlbums, true)}
       {renderSection('Nº 02 · Frequently Played', frequentAlbums, true)}
       {renderSection('Nº 03 · All Albums', albums, false)}

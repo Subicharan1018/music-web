@@ -1,10 +1,3 @@
-/**
- * AppShell.jsx
- * Top-level layout incorporating Sidebar, main content area, QueuePanel, and PlayerBar.
- * Styled with Atelier Zero.
- * Wraps everything in DndContext for drag-and-drop support.
- */
-
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
@@ -18,6 +11,8 @@ import { useUIStore } from '../../store/uiStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { usePlaylistStore } from '../../store/playlistStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
+import { useSettingsStore } from '../../store/settingsStore';
+import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { ToastContainer } from '../shared/Toast';
 
 export const AppShell = () => {
@@ -25,6 +20,8 @@ export const AppShell = () => {
   const { queue, reorderQueue, initEngine, audioEngine } = usePlayerStore();
   const { fetchPlaylists } = usePlaylistStore();
   const client = useSubsonic();
+  const localShuffleUrl = useSettingsStore((s) => s.localShuffleUrl);
+  const { init, startHealthPolling, stopHealthPolling } = useAIShuffleStore();
 
   // Initialize the AudioEngine once the client is available
   useEffect(() => {
@@ -35,6 +32,15 @@ export const AppShell = () => {
       fetchPlaylists(client);
     }
   }, [client, audioEngine, initEngine, fetchPlaylists]);
+
+  // Initialize AI shuffle server and start health polling when URL changes
+  useEffect(() => {
+    init(localShuffleUrl || '');
+    if (localShuffleUrl) {
+      startHealthPolling();
+    }
+    return () => stopHealthPolling();
+  }, [localShuffleUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

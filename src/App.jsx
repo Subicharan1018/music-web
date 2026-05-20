@@ -8,16 +8,21 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useSettingsStore } from './store/settingsStore';
 import { useUIStore } from './store/uiStore';
 import { AppShell } from './components/layout/AppShell';
-import { LoginPage } from './pages/LoginPage';
-import { LibraryPage } from './pages/LibraryPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { AlbumDetailPage } from './pages/AlbumDetailPage';
-import { ArtistDetailPage } from './pages/ArtistDetailPage';
-import { SearchPage } from './pages/SearchPage';
-import { ArtistsPage } from './pages/ArtistsPage';
-import { PlaylistsPage } from './pages/PlaylistsPage';
-import { PlaylistDetailPage } from './pages/PlaylistDetailPage';
-import { FavoritesPage } from './pages/FavoritesPage';
+import { Suspense, lazy } from 'react';
+import { LoadingSpinner } from './components/shared/LoadingSpinner';
+
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const LibraryPage = lazy(() => import('./pages/LibraryPage').then(m => ({ default: m.LibraryPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const AlbumDetailPage = lazy(() => import('./pages/AlbumDetailPage').then(m => ({ default: m.AlbumDetailPage })));
+const ArtistDetailPage = lazy(() => import('./pages/ArtistDetailPage').then(m => ({ default: m.ArtistDetailPage })));
+const SearchPage = lazy(() => import('./pages/SearchPage').then(m => ({ default: m.SearchPage })));
+const ArtistsPage = lazy(() => import('./pages/ArtistsPage').then(m => ({ default: m.ArtistsPage })));
+const PlaylistsPage = lazy(() => import('./pages/PlaylistsPage').then(m => ({ default: m.PlaylistsPage })));
+const PlaylistDetailPage = lazy(() => import('./pages/PlaylistDetailPage').then(m => ({ default: m.PlaylistDetailPage })));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
+const StatsPage = lazy(() => import('./pages/StatsPage').then(m => ({ default: m.StatsPage })));
+const LastFmCallbackPage = lazy(() => import('./pages/LastFmCallbackPage').then(m => ({ default: m.LastFmCallbackPage })));
 
 const RouteSync = () => {
   const location = useLocation();
@@ -51,31 +56,35 @@ function App() {
   const { isConfigured } = useSettingsStore();
 
   return (
-    <Routes>
-      <Route 
-        path="/login" 
-        element={isConfigured ? <Navigate to="/library" replace /> : <LoginPage />} 
-      />
-      
-      <Route path="/" element={<AuthGuard><AppShell /></AuthGuard>}>
-        <Route index element={<Navigate to="/library" replace />} />
-        <Route path="library" element={<LibraryPage />} />
-        <Route path="album/:id" element={<AlbumDetailPage />} />
-        <Route path="artist/:id" element={<ArtistDetailPage />} />
-        <Route path="search" element={<SearchPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+    <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center"><LoadingSpinner /></div>}>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={isConfigured ? <Navigate to="/library" replace /> : <LoginPage />} 
+        />
         
-        {/* Placeholders for other routes */}
-        <Route path="albums" element={<LibraryPage />} />
-        <Route path="artists" element={<ArtistsPage />} />
-        <Route path="playlists" element={<PlaylistsPage />} />
-        <Route path="playlist/:id" element={<PlaylistDetailPage />} />
-        <Route path="favorites" element={<FavoritesPage />} />
-        <Route path="stats" element={<LibraryPage />} />
-      </Route>
-      
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/" element={<AuthGuard><AppShell /></AuthGuard>}>
+          <Route index element={<Navigate to="/library" replace />} />
+          <Route path="library" element={<LibraryPage />} />
+          <Route path="album/:id" element={<AlbumDetailPage />} />
+          <Route path="artist/:id" element={<ArtistDetailPage />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          
+          {/* Placeholders for other routes */}
+          <Route path="albums" element={<LibraryPage />} />
+          <Route path="artists" element={<ArtistsPage />} />
+          <Route path="playlists" element={<PlaylistsPage />} />
+          <Route path="playlist/:id" element={<PlaylistDetailPage />} />
+          <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="stats" element={<StatsPage />} />
+        </Route>
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Last.fm OAuth callback — lives outside AppShell so no sidebar/player */}
+        <Route path="/lastfm/callback" element={<LastFmCallbackPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 

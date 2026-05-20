@@ -8,7 +8,8 @@ import { NavLink } from 'react-router-dom';
 import { useUIStore } from '../../store/uiStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { usePlaylistStore } from '../../store/playlistStore';
-import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search } from 'lucide-react';
+import { useAffinityStore } from '../../store/affinityStore';
+import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search, Flame } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink
@@ -58,7 +59,12 @@ export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { serverUrl } = useSettingsStore();
   const { playlists } = usePlaylistStore();
+  const getListeningStreak = useAffinityStore((s) => s.getListeningStreak);
   const isConnected = !!serverUrl;
+  const streak = getListeningStreak();
+  const streakBadge = streak.current >= 2
+    ? (sidebarCollapsed ? true : `🔥 ${streak.current}`)
+    : undefined;
 
   return (
     <aside 
@@ -92,7 +98,7 @@ export const Sidebar = () => {
         </NavSection>
         
         <NavSection title="System" collapsed={sidebarCollapsed}>
-          <NavItem to="/stats" icon={BarChart2} label="Stats" collapsed={sidebarCollapsed} />
+          <NavItem to="/stats" icon={BarChart2} label="Stats" collapsed={sidebarCollapsed} badge={streakBadge} />
           <NavItem to="/settings" icon={Settings} label="Settings" collapsed={sidebarCollapsed} />
         </NavSection>
       </nav>

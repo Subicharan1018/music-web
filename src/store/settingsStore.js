@@ -28,6 +28,9 @@ export const useSettingsStore = create(
       
       scrobblingEnabled: true,
       lastfmSessionKey: null,
+      lastfmApiKey: '',
+      lastfmApiSecret: '',
+      lastfmUsername: '',
       
       theme: 'dark',
 

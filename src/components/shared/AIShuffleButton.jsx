@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { usePlayer } from '../../hooks/usePlayer';
 import { useUIStore } from '../../store/uiStore';
 import { gsap } from '../../lib/gsap';
+import { useServerHealth } from '../../hooks/useServerHealth';
 
 export const AIShuffleButton = ({ className = "" }) => {
   const {
@@ -13,6 +14,7 @@ export const AIShuffleButton = ({ className = "" }) => {
   } = usePlayer();
 
   const { addToast } = useUIStore();
+  const { isHealthy, isConfigured } = useServerHealth();
   const buttonRef = useRef(null);
   const glowRef = useRef(null);
 
@@ -140,6 +142,16 @@ export const AIShuffleButton = ({ className = "" }) => {
         <span className="absolute -top-1 -right-1 text-[8px] font-sans font-bold bg-coral text-paper px-1 rounded-sm leading-none py-0.5">
           AI
         </span>
+      )}
+
+      {/* Server health dot — green=healthy, coral=offline, grey=not configured */}
+      {shuffleMode === 'smart' && (
+        <span
+          className={`absolute -bottom-1 -right-1 w-1.5 h-1.5 rounded-full ring-1 ring-ink/10 ${
+            !isConfigured ? 'bg-ink/30' : isHealthy ? 'bg-green-400' : 'bg-coral'
+          }`}
+          title={!isConfigured ? 'AI server not configured' : isHealthy ? 'AI server online' : 'AI server offline'}
+        />
       )}
     </button>
   );
