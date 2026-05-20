@@ -29,3 +29,4 @@ graphify-out/*.json
 
 graphify-out/cache/ast/*.json
 graphify-out/cache/semantic/*.json
+*.py

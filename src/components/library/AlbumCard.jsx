@@ -53,7 +53,7 @@ export const AlbumCard = ({ album }) => {
   return (
     <div 
       ref={cardRef}
-      className="group flex flex-col gap-2 cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 relative"
+      className="reveal-item group flex flex-col gap-2 cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 relative"
       style={style}
       onClick={() => navigate(`/album/${album.id}`)}
       onContextMenu={handleContextMenu}

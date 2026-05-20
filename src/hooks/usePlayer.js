@@ -11,6 +11,7 @@ import { useAffinityStore } from '../store/affinityStore';
 export const usePlayer = () => {
   const store = usePlayerStore();
   const timerRef = useRef(null);
+  const trackChangeRef = useRef(null); // BUG 1 Fix
 
   const [affinityRefresh, setAffinityRefresh] = useState(0);
   const affinityData = useMemo(() => useAffinityStore.getState(), [affinityRefresh]);
@@ -49,11 +50,25 @@ export const usePlayer = () => {
     };
   }, [isPlaying, audioEngine, setPosition, setDuration]);
 
-  // Stable action refs
+  // Cleanup trackChangeRef on unmount
+  useEffect(() => {
+    return () => {
+      if (trackChangeRef.current) clearTimeout(trackChangeRef.current);
+    };
+  }, []);
+
+  // Stable action refs with debounce for rapid skipping (BUG 1)
+  const debouncedAction = useCallback((action) => {
+    if (trackChangeRef.current) clearTimeout(trackChangeRef.current);
+    trackChangeRef.current = setTimeout(() => {
+      action();
+    }, 50);
+  }, []);
+
   const play = useCallback((song) => store.play(song), [store]);
   const pause = useCallback(() => store.pause(), [store]);
-  const next = useCallback(() => store.next(), [store]);
-  const prev = useCallback(() => store.prev(), [store]);
+  const next = useCallback(() => debouncedAction(() => store.next()), [store, debouncedAction]);
+  const prev = useCallback(() => debouncedAction(() => store.prev()), [store, debouncedAction]);
   const seek = useCallback((seconds) => store.seek(seconds), [store]);
   const setVolume = useCallback((v) => store.setVolume(v), [store]);
   const setQueue = useCallback((q) => store.setQueue(q), [store]);
@@ -61,8 +76,8 @@ export const usePlayer = () => {
   const setShuffle = useCallback((e) => store.setShuffle(e), [store]);
   const setRepeatMode = useCallback((m) => store.setRepeatMode(m), [store]);
 
-  const enableSmartShuffle = useCallback((songs) => {
-    store.enableSmartShuffle(songs, affinityData);
+  const enableSmartShuffle = useCallback(async (songs, options = {}) => {
+    await store.enableSmartShuffle(songs, { ...options, affinityData });
     setAffinityRefresh(prev => prev + 1);
   }, [store, affinityData]);
 

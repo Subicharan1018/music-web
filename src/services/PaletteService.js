@@ -3,7 +3,7 @@
  * Extracts dominant colors from cover art using colorthief.
  */
 
-import { getPaletteSync, getColorSync } from 'colorthief';
+import { getColorSync, getPaletteSync } from 'colorthief';
 
 export class PaletteService {
   constructor(maxSize = 50) {
@@ -33,13 +33,12 @@ export class PaletteService {
       
       img.onload = () => {
         try {
-          // The modern colorthief package returns color objects with a hex() method
-          const palette = getPaletteSync(img, { colorCount: 3 });
+          const palette = getPaletteSync(img, 3);
           if (palette && palette.length >= 3) {
             const result = {
-              primary: palette[0].hex() || this.fallback.primary,
-              secondary: palette[1].hex() || this.fallback.secondary,
-              muted: palette[2].hex() || this.fallback.muted
+              primary: palette[0].hex(),
+              secondary: palette[1].hex(),
+              muted: palette[2].hex()
             };
             this._setToCache(coverArtUrl, result);
             resolve(result);

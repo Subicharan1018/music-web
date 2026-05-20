@@ -9,7 +9,9 @@ import { create } from 'zustand';
 import AudioEngine from '../services/AudioEngine';
 import ScrobbleService from '../services/ScrobbleService';
 import { applyShuffleAlgorithm } from '../services/ShuffleService';
+import { ShuffleApiService, mapRecommendationsToSongs } from '../services/ShuffleApiService';
 import { useAffinityStore } from './affinityStore';
+import { useSettingsStore } from './settingsStore';
 
 const loadPersistedState = () => {
   try {
@@ -26,7 +28,9 @@ const loadPersistedState = () => {
     shuffleEnabled: false, // Legacy boolean, kept for backward compatibility if needed, or remove? I will keep it for now but we use shuffleMode.
     shuffleMode: 'none',
     originalQueue: [],
-    repeatMode: 'none'
+    repeatMode: 'none',
+    gainValue: 0.0,
+    isShuffled: false
   };
 };
 
@@ -42,8 +46,10 @@ export const usePlayerStore = create((set, get) => ({
   volume: initialState.volume,
   shuffleEnabled: initialState.shuffleEnabled,
   shuffleMode: initialState.shuffleMode || 'none',
+  isShuffled: initialState.isShuffled || false,
   originalQueue: initialState.originalQueue || [],
   repeatMode: initialState.repeatMode,
+  gainValue: initialState.gainValue || 0.0,
   
   audioEngine: null,
   scrobbleService: null,
@@ -208,6 +214,8 @@ export const usePlayerStore = create((set, get) => ({
     set({ volume });
   },
 
+  setGainValue: (gainValue) => set({ gainValue }),
+
   setQueue: (newQueue) => {
     set({ 
       queue: newQueue, 
@@ -243,7 +251,9 @@ export const usePlayerStore = create((set, get) => ({
     }));
   },
 
-  enableSmartShuffle: (songs, affinityData) => {
+  enableSmartShuffle: async (songs, options = {}) => {
+    const { affinityData, playlistName } = options;
+    const affinityDataSafe = affinityData || useAffinityStore.getState();
     const state = get();
     const currentQueue = state.queue;
     const currentSong = state.currentSong;
@@ -252,15 +262,63 @@ export const usePlayerStore = create((set, get) => ({
     const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
     const pool = songs || originalQueue;
 
-    // Apply smart algorithm
-    const shuffled = applyShuffleAlgorithm(pool, affinityData, { 
-      maxQueue: 50, 
-      avoidRecent: true, 
-      seedSong: currentSong 
+    const maxQueue = 50;
+    const localFallback = () => applyShuffleAlgorithm(pool, affinityDataSafe, {
+      maxQueue,
+      avoidRecent: true,
+      seedSong: currentSong
     });
+
+    let shuffled = null;
+    const shuffleUrl = useSettingsStore.getState().localShuffleUrl;
+    if (shuffleUrl) {
+      try {
+        const service = new ShuffleApiService(shuffleUrl);
+        const count = Math.min(15, pool.length);
+        const recommendations = await service.getNext({
+          currentSong,
+          playlistName,
+          candidates: pool,
+          count
+        });
+
+        const ordered = mapRecommendationsToSongs(recommendations, pool);
+        const usedIds = new Set(ordered.map((song) => song.id));
+        const seedSong = currentSong && pool.find((song) => song.id === currentSong.id) ? currentSong : null;
+
+        const result = [];
+        if (seedSong) {
+          result.push(seedSong);
+          usedIds.add(seedSong.id);
+        }
+
+        ordered.forEach((song) => {
+          if (!usedIds.has(song.id)) {
+            result.push(song);
+            usedIds.add(song.id);
+          }
+        });
+
+        const remainingPool = pool.filter((song) => !usedIds.has(song.id));
+        const filler = applyShuffleAlgorithm(remainingPool, affinityData, {
+          maxQueue: Math.max(0, maxQueue - result.length),
+          avoidRecent: true,
+          seedSong: null
+        });
+
+        shuffled = [...result, ...filler].slice(0, maxQueue);
+      } catch (error) {
+        shuffled = null;
+      }
+    }
+
+    if (!shuffled || shuffled.length === 0) {
+      shuffled = localFallback();
+    }
 
     set({
       shuffleMode: 'smart',
+      isShuffled: true,
       originalQueue,
       queue: shuffled,
       currentIndex: 0, // seedSong is at index 0
@@ -292,6 +350,7 @@ export const usePlayerStore = create((set, get) => ({
 
     set({
       shuffleMode: 'dumb',
+      isShuffled: true,
       originalQueue,
       queue: newQueue,
       currentIndex: 0
@@ -312,6 +371,7 @@ export const usePlayerStore = create((set, get) => ({
 
     set({
       shuffleMode: 'none',
+      isShuffled: false,
       queue: restoredQueue,
       originalQueue: [], // clear original queue
       currentIndex: newIndex
@@ -342,15 +402,32 @@ usePlayerStore.subscribe((state, prevState) => {
   if (!prevState || isChanged) {
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
+      const sanitizeSong = (song) => {
+        if (!song) return null;
+        return {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          artistId: song.artistId,
+          album: song.album,
+          coverArt: song.coverArt,
+          duration: song.duration,
+          year: song.year,
+          genre: song.genre
+        };
+      };
+
       const persistData = {
-        queue: state.queue,
+        queue: Array.isArray(state.queue) ? state.queue.map(sanitizeSong) : [],
         currentIndex: state.currentIndex,
-        currentSong: state.currentSong,
+        currentSong: sanitizeSong(state.currentSong),
         volume: state.volume,
         shuffleEnabled: state.shuffleEnabled,
         shuffleMode: state.shuffleMode,
-        originalQueue: state.originalQueue,
-        repeatMode: state.repeatMode
+        isShuffled: state.isShuffled,
+        originalQueue: Array.isArray(state.originalQueue) ? state.originalQueue.map(sanitizeSong) : [],
+        repeatMode: state.repeatMode,
+        gainValue: state.gainValue
       };
       localStorage.setItem('navivibe-player-queue', JSON.stringify(persistData));
     }, 5000);

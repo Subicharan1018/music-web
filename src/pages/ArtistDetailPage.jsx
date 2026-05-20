@@ -9,6 +9,8 @@ import { useLibraryStore } from '../store/libraryStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SongRow } from '../components/library/SongRow';
 import { SkeletonCard } from '../components/shared/SkeletonCard';
+import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useRef } from 'react';
 
 export const ArtistDetailPage = () => {
   const { id } = useParams();
@@ -40,8 +42,14 @@ export const ArtistDetailPage = () => {
     return () => { isMounted = false; };
   }, [client, id, fetchArtist]);
 
+  const containerRef = useRef(null);
+  useGSAPScrollReveal(containerRef, {
+    selector: '.reveal-item',
+    dependencies: [artist, topSongs, isLoading]
+  });
+
   return (
-    <div className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
+    <div ref={containerRef} className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
       {isLoading && !artist ? (
         <div className="flex flex-col gap-12">
            <div className="h-12 w-1/3 bg-ink/5 animate-shimmer rounded mb-8" />

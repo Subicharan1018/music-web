@@ -8,11 +8,17 @@ import { persist } from 'zustand/middleware';
 
 export const useSettingsStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       serverUrl: '',
       username: '',
       password: '',
       isConfigured: false,
+
+      // Getters for compatibility
+      get replayGainEnabled() { return get().replayGainMode !== 'none'; },
+      get scrobbleEnabled() { return get().scrobblingEnabled; },
+
+      localShuffleUrl: '',
       
       transcodeFormat: 'mp3',
       transcodeBitrate: '320',

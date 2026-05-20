@@ -19,6 +19,8 @@ const DEFAULT_MAX_QUEUE = 50;
 export function applyShuffleAlgorithm(songs, affinityData, options = {}) {
   if (!songs || songs.length === 0) return [];
 
+  const safeAffinity = affinityData || { artists: {}, genres: {}, songs: {}, hourBuckets: [] };
+
   const maxQueue = options.maxQueue || DEFAULT_MAX_QUEUE;
   const avoidRecent = options.avoidRecent !== false; // default true
   const seedSong = options.seedSong;
@@ -34,10 +36,10 @@ export function applyShuffleAlgorithm(songs, affinityData, options = {}) {
     const artistId = song.artistId || song.artist;
     const score = calculateSongScore(
       song,
-      affinityData.songs?.[song.id],
-      affinityData.artists?.[artistId],
-      affinityData.genres?.[song.genre],
-      affinityData.hourBuckets ? getHourPreference(affinityData.hourBuckets) : 0,
+      safeAffinity.songs?.[song.id],
+      safeAffinity.artists?.[artistId],
+      safeAffinity.genres?.[song.genre],
+      safeAffinity.hourBuckets ? getHourPreference(safeAffinity.hourBuckets) : 0,
       { avoidRecent }
     );
     return songWeight(score);

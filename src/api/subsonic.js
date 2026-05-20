@@ -60,7 +60,11 @@ class SubsonicClient {
     
     Object.entries({ ...authParams, ...extraParams }).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        url.searchParams.append(key, value);
+        if (Array.isArray(value)) {
+          value.forEach(v => url.searchParams.append(key, v));
+        } else {
+          url.searchParams.append(key, value);
+        }
       }
     });
     
@@ -112,6 +116,10 @@ class SubsonicClient {
     return this._request(ENDPOINTS.GET_ALBUM, { id });
   }
 
+  async getAlbumList(type = 'newest', size = 50, offset = 0) {
+    return this._request(ENDPOINTS.GET_ALBUM_LIST, { type, size, offset });
+  }
+
   async getAlbumList2(type = 'newest', size = 50, offset = 0) {
     return this._request(ENDPOINTS.GET_ALBUM_LIST2, { type, size, offset });
   }
@@ -122,6 +130,10 @@ class SubsonicClient {
 
   async getSimilarSongs2(id, count = 50) {
     return this._request(ENDPOINTS.GET_SIMILAR_SONGS2, { id, count });
+  }
+
+  async search(query, { artistCount = 20, albumCount = 20, songCount = 20 } = {}) {
+    return this._request(ENDPOINTS.SEARCH, { query, artistCount, albumCount, songCount });
   }
 
   async search3(query, { artistCount = 20, albumCount = 20, songCount = 20 } = {}) {
@@ -152,13 +164,60 @@ class SubsonicClient {
     return this._request(ENDPOINTS.GET_PLAYLISTS);
   }
 
+  async getPlaylist(id) {
+    return this._request(ENDPOINTS.GET_PLAYLIST, { id });
+  }
+
+  async createPlaylist(name, songId = []) {
+    return this._request(ENDPOINTS.CREATE_PLAYLIST, { name, songId });
+  }
+
+  async updatePlaylist(playlistId, { name, comment, public: isPublic, songIdToAdd = [], songIndexToRemove = [] }) {
+    return this._request(ENDPOINTS.UPDATE_PLAYLIST, { 
+      playlistId, 
+      name, 
+      comment, 
+      public: isPublic, 
+      songIdToAdd, 
+      songIndexToRemove 
+    });
+  }
+
+  async deletePlaylist(id) {
+    return this._request(ENDPOINTS.DELETE_PLAYLIST, { id });
+  }
+
+  async getStarred() {
+    return this._request(ENDPOINTS.GET_STARRED);
+  }
+
+  async getStarred2() {
+    return this._request(ENDPOINTS.GET_STARRED2);
+  }
+
+  async getLyrics(artist, title) {
+    return this._request(ENDPOINTS.GET_LYRICS, { artist, title });
+  }
+
+  async getLyricsBySongId(id) {
+    return this._request(ENDPOINTS.GET_LYRICS_BY_SONG_ID, { id });
+  }
+
   stream(songId, options = {}) {
     return this._buildUrl(ENDPOINTS.STREAM, { id: songId, ...options });
+  }
+
+  getStreamUrl(songId, options = {}) {
+    return this.stream(songId, options);
   }
 
   getCoverArtUrl(id, size = 300) {
     if (!id) return '';
     return this._buildUrl(ENDPOINTS.GET_COVER_ART, { id, size });
+  }
+
+  async scrobble(id, time, submission = true) {
+    return this._request(ENDPOINTS.SCROBBLE, { id, time, submission });
   }
 }
 

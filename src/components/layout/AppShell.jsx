@@ -7,57 +7,37 @@
 
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Sidebar } from './Sidebar';
 import { PlayerBar } from './PlayerBar';
 import { QueuePanel } from '../queue/QueuePanel';
 import { TopBar } from './TopBar';
 import { SideRail } from './SideRail';
 import SonicWaveformBackground from '../ui/sonic-waveform';
+import { NowPlayingOverlay } from '../nowplaying/NowPlayingOverlay';
 import { useUIStore } from '../../store/uiStore';
 import { usePlayerStore } from '../../store/playerStore';
+import { usePlaylistStore } from '../../store/playlistStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
+import { ToastContainer } from '../shared/Toast';
 
 export const AppShell = () => {
   const { sidebarCollapsed } = useUIStore();
   const { queue, reorderQueue, initEngine, audioEngine } = usePlayerStore();
+  const { fetchPlaylists } = usePlaylistStore();
   const client = useSubsonic();
 
   // Initialize the AudioEngine once the client is available
   useEffect(() => {
-    if (client && !audioEngine) {
-      initEngine(client);
+    if (client) {
+      if (!audioEngine) {
+        initEngine(client);
+      }
+      fetchPlaylists(client);
     }
-  }, [client, audioEngine, initEngine]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5, // 5px movement required before drag starts to allow clicks
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-
-    if (active && over && active.id !== over.id) {
-      const oldIndex = parseInt(active.id.split('-')[1], 10);
-      const newIndex = parseInt(over.id.split('-')[1], 10);
-      reorderQueue(oldIndex, newIndex);
-    }
-  };
+  }, [client, audioEngine, initEngine, fetchPlaylists]);
 
   return (
-    <DndContext 
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
+    <>
       <div className="relative flex h-screen w-full bg-transparent text-ink overflow-hidden">
         <SonicWaveformBackground />
         <TopBar />
@@ -67,7 +47,7 @@ export const AppShell = () => {
         <Sidebar />
         
         <main 
-          className={`flex-1 transition-all duration-300 overflow-y-auto pb-player-bar z-10 pt-[44px] pr-9 ${
+          className={`main-content flex-1 transition-all duration-300 overflow-y-auto pb-player-bar z-10 pt-[44px] pr-9 ${
             sidebarCollapsed ? 'ml-[calc(64px+36px)]' : 'ml-[calc(240px+36px)]'
           }`}
         >
@@ -77,8 +57,10 @@ export const AppShell = () => {
         </main>
 
         <QueuePanel />
+        <NowPlayingOverlay />
         <PlayerBar />
       </div>
-    </DndContext>
+      <ToastContainer />
+    </>
   );
 };

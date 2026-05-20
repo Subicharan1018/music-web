@@ -3,6 +3,8 @@
  * Pure service for calculating song shuffle scores and weights.
  */
 
+import { GENRE_BPM_MAP } from '../lib/constants';
+
 const WEIGHT_EXPONENT = 2.5;
 const RECENCY_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -45,6 +47,23 @@ export function calculateSongScore(song, songProfile, artistAff, genreAff, hourS
   // 4. Hour Preference
   if (hourScore > 0) {
     score += hourScore * 0.2; // up to +0.2
+  }
+
+  // 4.5. Time-based BPM genre recommendations (Rule requirement)
+  // Melody in morning (0-12), Kuthu/rock in evening (17+)
+  if (song.genre) {
+    const bpm = GENRE_BPM_MAP[song.genre.toLowerCase()] || 110;
+    const currentHour = new Date().getHours();
+    
+    if (currentHour >= 5 && currentHour < 12) {
+      // Morning: Prefer lower BPM (< 100)
+      if (bpm < 100) score += 0.15;
+      else if (bpm > 130) score -= 0.1;
+    } else if (currentHour >= 17 || currentHour < 2) {
+      // Evening/Night: Prefer higher BPM (> 120)
+      if (bpm > 120) score += 0.15;
+      else if (bpm < 90) score -= 0.1;
+    }
   }
 
   // Clamp score between 0.01 and 1.0 before recency penalty
