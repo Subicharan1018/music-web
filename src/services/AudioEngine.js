@@ -27,8 +27,12 @@ class AudioEngine {
     this.preventClipping = true;
 
     this.trackEndTimer = null;
-    this.progressTimer = null;
     this._accumulatedTime = 0;
+    this._lastProgressPos = 0;
+    this._isPlaying = false; // tracks play state for accumulation
+
+    // RC-01: Generation counter
+    this._generation = 0;
   }
 
   _calculateVolume(song) {
@@ -46,6 +50,11 @@ class AudioEngine {
     this._checkSkipCondition();
     this._cleanupActive();
     this._accumulatedTime = 0;
+    this._lastProgressPos = 0;
+
+    // RC-01: Capture generation for this load. Any Howl callback that sees
+    // a different generation is a stale listener and must be ignored.
+    const gen = ++this._generation;
     
     // If we already preloaded this exact song, swap it in
     if (this.preloadedHowl && this.preloadedSong?.id === song.id) {
@@ -56,7 +65,7 @@ class AudioEngine {
       this.preloadedSong = null;
       
       // Update handlers for the now-active howl
-      this._attachActiveHandlers(this.activeHowl, song);
+      this._attachActiveHandlers(this.activeHowl, song, gen);
       this.activeHowl.volume(this._calculateVolume(song));
       
       if (autoplay) {
@@ -75,32 +84,35 @@ class AudioEngine {
       autoplay: autoplay,
     });
 
-    this._attachActiveHandlers(this.activeHowl, song);
+    this._attachActiveHandlers(this.activeHowl, song, gen);
   }
 
-  _attachActiveHandlers(howl, song) {
-    // Clear any previous handlers if it was a preloaded howl
+  _attachActiveHandlers(howl, song, gen) {
     howl.off('end');
     howl.off('play');
     howl.off('pause');
     howl.off('stop');
 
     howl.on('play', () => {
+      if (this._generation !== gen) return;
+      this._isPlaying = true;
       this.onStateChange?.(true);
-      this._startProgressTimer();
     });
     howl.on('pause', () => {
+      if (this._generation !== gen) return;
+      this._isPlaying = false;
       this.onStateChange?.(false);
-      this._stopProgressTimer();
     });
     howl.on('stop', () => {
+      if (this._generation !== gen) return;
+      this._isPlaying = false;
       this.onStateChange?.(false);
-      this._stopProgressTimer();
     });
 
     howl.on('end', () => {
+      if (this._generation !== gen) return; // RC-01: stale Howl fired, discard
+      this._isPlaying = false;
       this.isNaturalEnd = true;
-      // 200ms buffer before triggering onTrackEnd to prevent gap
       if (this.trackEndTimer) clearTimeout(this.trackEndTimer);
       this.trackEndTimer = setTimeout(() => {
         this.onTrackEnd?.();
@@ -190,28 +202,26 @@ class AudioEngine {
     }
   }
 
-  _startProgressTimer() {
-    if (this.progressTimer) clearInterval(this.progressTimer);
-    this.progressTimer = setInterval(() => {
-      const pos = this.getCurrentPosition();
-      const dur = this.getDuration();
-      
-      this.onPositionUpdate?.(pos, dur);
+  /**
+   * Called by usePlayer's polling interval (300ms while playing).
+   * Drives scrobble accumulation without a separate setInterval.
+   * dt = elapsed seconds since last call (approximate, caller should track).
+   */
+  _tickScrobble(pos, dur, dt) {
+    if (!this.activeSong || this._accumulatedTime === Infinity) return;
 
-      if (this.activeSong && this._accumulatedTime !== Infinity) {
-        this._accumulatedTime += 0.5;
-        if (this._accumulatedTime >= dur * 0.5 || this._accumulatedTime >= 240) {
-          ScrobbleService.scrobble(this.activeSong.id);
-          this._accumulatedTime = Infinity; // Prevent double-scrobble
-        }
-      }
-    }, 500);
-  }
+    // RC-05: Detect repeat-one loop — position jumped backward by >5s
+    if (pos < this._lastProgressPos - 5) {
+      this._accumulatedTime = 0;
+    }
+    this._lastProgressPos = pos;
 
-  _stopProgressTimer() {
-    if (this.progressTimer) {
-      clearInterval(this.progressTimer);
-      this.progressTimer = null;
+    if (this._isPlaying) {
+      this._accumulatedTime += dt;
+    }
+    if (this._accumulatedTime >= Math.min(dur * 0.5, 240) && dur > 0) {
+      ScrobbleService.scrobble(this.activeSong.id);
+      this._accumulatedTime = Infinity; // prevent double-scrobble
     }
   }
 
@@ -221,13 +231,14 @@ class AudioEngine {
       this.activeHowl = null;
     }
     this.activeSong = null;
+    this._isPlaying = false;
     this.isNaturalEnd = false;
     this._accumulatedTime = 0;
+    this._lastProgressPos = 0;
     if (this.trackEndTimer) {
       clearTimeout(this.trackEndTimer);
       this.trackEndTimer = null;
     }
-    this._stopProgressTimer();
   }
 
   _cleanupPreloaded() {

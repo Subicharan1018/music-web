@@ -1,4 +1,10 @@
 import React, { useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
+
+// Routes on which the waveform should not render.
+// Playlist pages use the MusicPortfolio album-art background instead.
+// Settings and login are utilitarian/focused — no atmospheric distraction.
+const DISABLED_ROUTES = ['/playlist/', '/settings', '/login']
 
 const SonicWaveformCanvas = () => {
   const canvasRef = useRef(null)
@@ -24,14 +30,16 @@ const SonicWaveformCanvas = () => {
       const lineCount = 48
       const segmentCount = 72
       const height = canvas.height / 2
+      // UI.4: Reduced opacity 0.28→0.12 so the wave is atmospheric,
+      // not competing visually with album art and content.
       const accent = 'rgba(237, 111, 92, '
 
       for (let i = 0; i < lineCount; i++) {
         ctx.beginPath()
         const progress = i / lineCount
         const colorIntensity = Math.sin(progress * Math.PI)
-        ctx.strokeStyle = `${accent}${colorIntensity * 0.28})`
-        ctx.lineWidth = 1.2
+        ctx.strokeStyle = `${accent}${colorIntensity * 0.12})`
+        ctx.lineWidth = 1.0
 
         for (let j = 0; j < segmentCount + 1; j++) {
           const x = (j / segmentCount) * canvas.width
@@ -72,6 +80,15 @@ const SonicWaveformCanvas = () => {
 }
 
 const SonicWaveformBackground = ({ className = '' }) => {
+  const location = useLocation()
+
+  // UI.4: Suppress waveform on routes that have their own full-bleed backgrounds
+  const isDisabled = DISABLED_ROUTES.some(route =>
+    location.pathname.startsWith(route)
+  )
+
+  if (isDisabled) return null
+
   return (
     <div className={`pointer-events-none fixed inset-0 z-0 ${className}`} aria-hidden="true">
       <SonicWaveformCanvas />

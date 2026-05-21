@@ -28,6 +28,7 @@ import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { useServerHealth } from '../../hooks/useServerHealth';
 import { startedAtFormatted } from '../../services/ShuffleApiService';
 import { usePlayerStore } from '../../store/playerStore';
+import { SpotifyCard } from '../ui/spotify-card';
 
 const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23e6dcc4"/><circle cx="200" cy="200" r="120" fill="%23d3c6a5"/><circle cx="200" cy="200" r="18" fill="%23b9aa87"/></svg>';
 
@@ -186,137 +187,40 @@ export const NowPlayingOverlay = () => {
       >
         <div className="h-full w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-12">
 
-          {/* ── LEFT PANEL: art + controls ─────────────────────────────── */}
-          <section className="flex flex-col gap-5 justify-center">
+          {/* ── LEFT PANEL: Spotify Card + Session info ─────────────────────────────── */}
+          <section className="np-reveal flex flex-col justify-center">
+            
+            <SpotifyCard />
 
-            {/* Album art with vinyl ring */}
-            <div className="np-reveal flex justify-center lg:justify-start">
-              <div className="relative w-[260px] h-[260px] lg:w-[300px] lg:h-[300px] flex-shrink-0">
-                {/* Vinyl ring sits BEHIND art */}
-                <VinylRing isPlaying={isPlaying} />
-                {/* Album art — z-10 ensures it's above the vinyl ring */}
-                <img
-                  src={coverUrl}
-                  alt={currentSong?.title || 'Album cover'}
-                  className="relative z-10 w-full h-full object-cover rounded-2xl shadow-2xl"
-                  crossOrigin="anonymous"
-                />
-              </div>
-            </div>
-
-            {/* Song info */}
-            <div className="np-reveal text-center lg:text-left">
-              <h1 className="font-serif text-4xl italic text-paper leading-tight mb-1">
-                {currentSong?.title || 'No track selected'}
-              </h1>
-              <div className="font-sans text-lg font-medium text-paper/70 mb-1">
-                {currentSong?.artist || '—'}
-              </div>
-
-              {/* AI source label — between artist and album */}
+            {/* AI source label / Session strip — bottom of left panel */}
+            <div className="mt-8 flex flex-col items-center gap-2">
               {queueSource === 'cold_start' && (
-                <span className="font-mono text-[9px] text-coral/80 uppercase tracking-[0.2em] block mb-1">
+                <span className="font-mono text-[9px] text-coral/80 uppercase tracking-[0.2em] block">
                   AI · DISCOVERY
                 </span>
               )}
               {queueSource === 'model' && (
-                <span className="font-mono text-[9px] text-paper/40 uppercase tracking-[0.2em] block mb-1">
+                <span className="font-mono text-[9px] text-paper/40 uppercase tracking-[0.2em] block">
                   AI · RECOMMENDED
                 </span>
               )}
 
-              <div className="font-mono text-sm text-paper/50">
-                {currentSong?.album || 'Unknown album'}
-                {currentSong?.year ? ` · ${currentSong.year}` : ''}
-              </div>
+              {isConfigured && sessionStatus && (
+                <div className="flex items-center gap-4 font-mono text-[9px] text-paper/30 uppercase tracking-[0.15em]">
+                  <span>
+                    SESSION · {sessionStatus.songCount} SONGS
+                    {sessionStatus.startedAt ? ` · ${startedAtFormatted(sessionStatus.startedAt)}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetSession}
+                    className="hover:text-paper/60 transition-colors underline underline-offset-2"
+                  >
+                    RESET
+                  </button>
+                </div>
+              )}
             </div>
-
-            {/* Main controls */}
-            <div className="np-reveal flex items-center justify-center lg:justify-start gap-7">
-              <button
-                type="button"
-                onClick={prev}
-                className="text-paper/70 hover:text-paper transition-colors"
-                aria-label="Previous track"
-              >
-                <SkipBack size={28} />
-              </button>
-              <button
-                type="button"
-                onClick={isPlaying ? pause : play}
-                className="w-16 h-16 rounded-full bg-paper/20 hover:bg-paper/30 transition-colors duration-150 flex items-center justify-center text-paper"
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? <Pause size={28} /> : <Play size={28} className="translate-x-0.5" />}
-              </button>
-              <button
-                type="button"
-                onClick={next}
-                className="text-paper/70 hover:text-paper transition-colors"
-                aria-label="Next track"
-              >
-                <SkipForward size={28} />
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            <div className="np-reveal">
-              <ProgressBar light />
-            </div>
-
-            {/* Secondary controls */}
-            <div className="np-reveal flex flex-wrap items-center gap-5">
-              <VolumeSlider className="text-paper" />
-              <AIShuffleButton className="text-paper hover:text-paper" />
-              <button
-                type="button"
-                onClick={cycleLoop}
-                className={`flex items-center gap-2 text-sm font-sans transition-colors ${
-                  loopMode === 'off' ? 'text-paper/50 hover:text-paper/80' : 'text-paper'
-                }`}
-              >
-                <Repeat size={18} />
-                {loopMode === 'one' ? 'Once' : loopMode === 'all' ? 'All' : 'Off'}
-              </button>
-            </div>
-
-            {/* Favorite + Add to playlist */}
-            <div className="np-reveal flex items-center gap-5">
-              <button
-                type="button"
-                onClick={() => { if (client && currentSong) toggleStarSong(client, currentSong); }}
-                className="flex items-center gap-2 text-paper/70 hover:text-paper transition-colors"
-                disabled={!currentSong}
-              >
-                {isStarred ? <HeartOff size={18} /> : <Heart size={18} />}
-                <span className="text-sm font-sans">{isStarred ? 'Unfavorite' : 'Favorite'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddOpen(true)}
-                className="px-4 py-2 rounded-full bg-paper/15 hover:bg-paper/25 text-paper text-sm font-sans transition-colors"
-                disabled={!currentSong}
-              >
-                Add to playlist
-              </button>
-            </div>
-
-            {/* Session strip — bottom of left panel */}
-            {isConfigured && sessionStatus && (
-              <div className="np-reveal flex items-center gap-4 font-mono text-[9px] text-paper/30 uppercase tracking-[0.15em]">
-                <span>
-                  SESSION · {sessionStatus.songCount} SONGS
-                  {sessionStatus.startedAt ? ` · ${startedAtFormatted(sessionStatus.startedAt)}` : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleResetSession}
-                  className="hover:text-paper/60 transition-colors underline underline-offset-2"
-                >
-                  RESET
-                </button>
-              </div>
-            )}
           </section>
 
           {/* ── RIGHT PANEL: lyrics ────────────────────────────────────── */}
@@ -365,7 +269,7 @@ export const NowPlayingOverlay = () => {
                         onClick={() => {
                           if (line.time == null) return;
                           const s = line.time / 1000;
-                          if (!Number.isNaN(s)) get().seek(Math.max(0, s));
+                          if (!Number.isNaN(s)) seek(Math.max(0, s));
                         }}
                         className={`text-left transition-all duration-300 ${textClass}`}
                         data-line-index={index}

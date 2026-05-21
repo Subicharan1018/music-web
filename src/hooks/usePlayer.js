@@ -20,28 +20,29 @@ export const usePlayer = () => {
     audioEngine, 
     isPlaying, 
     setPosition, 
-    setDuration 
+    setDuration,
+    currentSong,
   } = store;
 
+  // Main position + duration polling — only while playing.
+  // 300ms is smooth enough for the UI scrubber and saves CPU vs 250ms.
   useEffect(() => {
     if (isPlaying && audioEngine) {
       if (timerRef.current) clearInterval(timerRef.current);
-      
       timerRef.current = setInterval(() => {
-        setPosition(audioEngine.getCurrentPosition());
+        const pos = audioEngine.getCurrentPosition();
         const dur = audioEngine.getDuration();
-        if (dur > 0) {
-          setDuration(dur);
-        }
-      }, 250);
+        setPosition(pos);
+        if (dur > 0) setDuration(dur);
+        // Drive scrobble accumulation from this single tick (replaces AudioEngine's own timer)
+        audioEngine._tickScrobble?.(pos, dur, 0.3);
+      }, 300);
     } else {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
     }
-
-    // Cleanup on unmount or when playing state changes
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -50,6 +51,26 @@ export const usePlayer = () => {
     };
   }, [isPlaying, audioEngine, setPosition, setDuration]);
 
+
+  // One-shot duration read on song change — covers the paused/initial case.
+  // Uses rAF retry instead of a tight 100ms interval (avoids 40 ticks over 4s).
+  useEffect(() => {
+    if (!audioEngine || !currentSong) return;
+    let raf = null;
+    let attempts = 0;
+    const MAX = 20; // ~20 frames ≈ 333ms at 60fps — more than enough for Howl load
+    const tryRead = () => {
+      const dur = audioEngine.getDuration();
+      if (dur > 0) {
+        setDuration(dur);
+      } else if (++attempts < MAX) {
+        raf = requestAnimationFrame(tryRead);
+      }
+    };
+    raf = requestAnimationFrame(tryRead);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [currentSong?.id, audioEngine, setDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Cleanup trackChangeRef on unmount
   useEffect(() => {
     return () => {
@@ -57,12 +78,18 @@ export const usePlayer = () => {
     };
   }, []);
 
-  // Stable action refs with debounce for rapid skipping (BUG 1)
+  // RC-02: Stable action refs with AbortController + debounce for rapid skipping.
+  // If the effect re-fires before the timer, abort() prevents the stale action.
   const debouncedAction = useCallback((action) => {
-    if (trackChangeRef.current) clearTimeout(trackChangeRef.current);
-    trackChangeRef.current = setTimeout(() => {
-      action();
-    }, 50);
+    if (trackChangeRef.current) {
+      trackChangeRef.current.abort?.();
+      clearTimeout(trackChangeRef.current.timerId);
+    }
+    const controller = new AbortController();
+    const timerId = setTimeout(() => {
+      if (!controller.signal.aborted) action();
+    }, 80);
+    trackChangeRef.current = { abort: () => controller.abort(), timerId };
   }, []);
 
   const play = useCallback((song) => store.play(song), [store]);

@@ -220,11 +220,14 @@ export const usePlayerStore = create((set, get) => ({
 
   setGainValue: (gainValue) => set({ gainValue }),
 
-  setQueue: (newQueue) => {
+  setQueue: (newQueue, startIndex = 0) => {
+    const clampedIndex = Math.min(Math.max(0, startIndex), Math.max(0, newQueue.length - 1));
     set({ 
       queue: newQueue, 
-      currentIndex: 0, 
-      currentSong: newQueue[0] || null
+      currentIndex: clampedIndex, 
+      currentSong: newQueue[clampedIndex] || null,
+      isPlaying: false,
+      position: 0
     });
   },
 

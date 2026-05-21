@@ -15,7 +15,9 @@ export const usePlaylistStore = create((set, get) => ({
   pendingReorder: false,
   error: null,
 
-  fetchPlaylists: async (client) => {
+  fetchPlaylists: async (client, force = false) => {
+    // Skip if we already have playlists and this isn't a forced refresh
+    if (!force && get().playlists.length > 0) return;
     set({ isLoading: true, error: null });
     try {
       const data = await client.getPlaylists();
@@ -24,6 +26,7 @@ export const usePlaylistStore = create((set, get) => ({
       set({ error: error.message, isLoading: false });
     }
   },
+
 
   fetchPlaylist: async (client, id) => {
     set({ isLoading: true, error: null });

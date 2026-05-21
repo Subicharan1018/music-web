@@ -10,6 +10,9 @@ import { useUIStore } from './store/uiStore';
 import { AppShell } from './components/layout/AppShell';
 import { Suspense, lazy } from 'react';
 import { LoadingSpinner } from './components/shared/LoadingSpinner';
+import { SplashScreen } from './components/layout/SplashScreen';
+import { authCookies } from './lib/auth';
+import { createSubsonicClient } from './api/subsonic';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then(m => ({ default: m.LibraryPage })));
@@ -37,10 +40,39 @@ const RouteSync = () => {
 };
 
 const AuthGuard = ({ children }) => {
-  const { isConfigured } = useSettingsStore();
+  const { isConfigured, setServerConfig, clearConfig } = useSettingsStore();
   const location = useLocation();
+  const [isVerifying, setIsVerifying] = React.useState(true);
 
-  if (!isConfigured) {
+  React.useEffect(() => {
+    let mounted = true;
+    const verifySession = async () => {
+      if (authCookies.exists() && !isConfigured) {
+        // Hydrate store from cookie if store was cleared but cookie exists
+        const credentials = authCookies.get();
+        if (credentials) setServerConfig(credentials);
+      }
+      
+      if (authCookies.exists()) {
+        try {
+          const credentials = authCookies.get();
+          const client = createSubsonicClient(credentials);
+          await client.ping();
+        } catch (e) {
+          authCookies.remove();
+          clearConfig();
+        }
+      }
+      
+      if (mounted) setIsVerifying(false);
+    };
+    verifySession();
+    return () => { mounted = false; };
+  }, [isConfigured, setServerConfig, clearConfig]);
+
+  if (isVerifying) return <SplashScreen />;
+
+  if (!isConfigured && !authCookies.exists()) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

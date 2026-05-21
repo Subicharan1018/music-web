@@ -45,9 +45,10 @@ export const PlaylistsPage = () => {
   useEffect(() => {
     setView('playlists');
     if (client) {
-      fetchPlaylists(client);
+      fetchPlaylists(client, true); // force = true: user navigated here, show fresh data
     }
-  }, [client, fetchPlaylists, setView]);
+  }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   return (
     <div className="animate-in fade-in duration-500 pb-24">

@@ -4,7 +4,7 @@
  * Phase 6: Added Last.fm connect/disconnect flow with api_key + api_secret fields.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/shared/Button';
@@ -15,6 +15,27 @@ import { useAIShuffleStore } from '../store/aiShuffleStore';
 import { ShuffleApiService, startedAtFormatted } from '../services/ShuffleApiService';
 
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
+
+const InputField = ({ label, type = 'text', value, onChange, placeholder, hint }) => (
+  <div>
+    <label className="block text-sm font-sans font-medium text-ink-mute mb-1">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 bg-paper-warm border border-ink/20 rounded-md text-ink font-body focus:outline-none focus:border-coral transition-colors"
+    />
+    {hint && <p className="mt-1 text-xs text-ink-faint font-sans">{hint}</p>}
+  </div>
+);
+
+const StatusBanner = ({ result }) =>
+  result ? (
+    <div className={`p-4 rounded-md border ${result.type === 'success' ? 'bg-olive/10 border-olive/20 text-olive' : 'bg-coral/10 border-coral/20 text-coral'}`}>
+      <p className="text-sm font-sans font-medium">{result.message}</p>
+    </div>
+  ) : null;
 
 export const SettingsPage = () => {
   const {
@@ -52,7 +73,6 @@ export const SettingsPage = () => {
   const { isConfigured, isHealthy, health } = useServerHealth();
   const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
   const resetSession = useAIShuffleStore((s) => s.resetSession);
-  const checkHealth = useAIShuffleStore((s) => s.checkHealth);
 
   const handleTestAiConnection = async () => {
     setAiTestResult(null);
@@ -165,27 +185,6 @@ export const SettingsPage = () => {
     updateSettings({ lastfmSessionKey: null, lastfmUsername: '' });
     setLastfmStatus({ type: 'success', message: 'Last.fm disconnected.' });
   };
-
-  const InputField = ({ label, type = 'text', value, onChange, placeholder, hint }) => (
-    <div>
-      <label className="block text-sm font-sans font-medium text-ink-mute mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 bg-paper-warm border border-ink/20 rounded-md text-ink font-body focus:outline-none focus:border-coral transition-colors"
-      />
-      {hint && <p className="mt-1 text-xs text-ink-faint font-sans">{hint}</p>}
-    </div>
-  );
-
-  const StatusBanner = ({ result }) =>
-    result ? (
-      <div className={`p-4 rounded-md border ${result.type === 'success' ? 'bg-olive/10 border-olive/20 text-olive' : 'bg-coral/10 border-coral/20 text-coral'}`}>
-        <p className="text-sm font-sans font-medium">{result.message}</p>
-      </div>
-    ) : null;
 
   return (
     <div className="animate-in fade-in duration-300 p-8 pb-32 max-w-2xl mx-auto h-full overflow-y-auto no-scrollbar">

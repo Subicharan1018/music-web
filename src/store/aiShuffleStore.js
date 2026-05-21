@@ -73,9 +73,10 @@ export const useAIShuffleStore = create((set, get) => ({
     if (!_serviceInstance || _serviceInstance._unconfigured) return;
     try {
       const health = await _serviceInstance.getHealth();
+      const wasHealthy = get().isHealthy;
       set({ health, isHealthy: health.isHealthy, healthLastChecked: Date.now() });
-      if (health.isHealthy) {
-        // Fetch session status immediately so overlay has it without extra call
+      // Only fetch session status when transitioning to healthy (not every poll)
+      if (health.isHealthy && !wasHealthy) {
         get().fetchSessionStatus().catch(() => {});
       }
     } catch (err) {
@@ -85,6 +86,7 @@ export const useAIShuffleStore = create((set, get) => ({
       }
     }
   },
+
 
   /**
    * GET /next — mirrors ShuffleQueueNotifier.fetchNext().

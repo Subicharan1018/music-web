@@ -9,7 +9,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { usePlaylistStore } from '../../store/playlistStore';
 import { useAffinityStore } from '../../store/affinityStore';
-import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search, Flame } from 'lucide-react';
+import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink
@@ -66,9 +66,19 @@ export const Sidebar = () => {
     ? (sidebarCollapsed ? true : `🔥 ${streak.current}`)
     : undefined;
 
+  // Derive a clean display hostname for the status bar
+  let displayHost = '';
+  if (isConnected) {
+    try {
+      displayHost = new URL(serverUrl).hostname;
+    } catch {
+      displayHost = serverUrl;
+    }
+  }
+
   return (
     <aside 
-      className={`fixed top-[44px] left-[36px] h-[calc(100vh-44px-80px)] bg-paper/70 backdrop-blur-2xl border-r border-ink/10 shadow-[4px_0_24px_rgba(21,20,15,0.03)] transition-all duration-300 z-40 flex flex-col ${
+      className={`h-full bg-paper/70 backdrop-blur-2xl border-r border-ink/10 shadow-[4px_0_24px_rgba(21,20,15,0.03)] transition-all duration-300 z-40 flex flex-col ${
         sidebarCollapsed ? 'sidebar-width-collapsed' : 'sidebar-width'
       }`}
     >
@@ -104,9 +114,21 @@ export const Sidebar = () => {
       </nav>
 
       {!sidebarCollapsed && (
-        <div className="shrink-0 sticky bottom-0 bg-paper px-4 py-4 mt-auto">
-          <div className="font-mono text-[9px] text-ink-faint uppercase tracking-wider">
-            SUBSONIC · {isConnected ? 'CONNECTED' : 'NOT CONNECTED'}
+        <div className="shrink-0 sticky bottom-0 bg-paper/80 border-t border-ink/8 px-4 py-3 mt-auto">
+          <div
+            className="flex items-center gap-2"
+            title={isConnected ? serverUrl : 'No server configured'}
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                isConnected
+                  ? 'bg-green-400 animate-pulse shadow-[0_0_4px_rgba(74,222,128,0.6)]'
+                  : 'bg-ink-faint'
+              }`}
+            />
+            <span className="font-mono text-[10px] text-ink-faint uppercase tracking-wider truncate">
+              {isConnected ? displayHost : 'Not connected'}
+            </span>
           </div>
         </div>
       )}

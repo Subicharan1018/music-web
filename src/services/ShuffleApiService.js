@@ -124,6 +124,8 @@ export class ShuffleApiService {
       if (playlist) url.searchParams.set('playlist', playlist);
       if (artist)   url.searchParams.set('artist',   artist);
 
+      console.log(`[SmartShuffle] Requesting next songs for: ${current}`);
+
       const res = await fetch(url.toString(), { signal, headers: { Accept: 'application/json' } });
       if (!res.ok) throw new ShuffleServerError(res.status);
       const data = await res.json();
@@ -263,6 +265,7 @@ function _parseList(value) {
  */
 function _parseRecommendedSong(json) {
   return {
+    id:        json.id?.toString() ?? null,
     title:     json.title?.toString() ?? json.song_key?.toString() ?? '',
     artist:    json.artist?.toString() ?? '',
     album:     json.album?.toString() ?? '',

@@ -5,14 +5,22 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { authCookies } from '../lib/auth';
+
+const initialAuth = authCookies.get() || {
+  serverUrl: '',
+  username: '',
+  password: '',
+  isConfigured: false
+};
 
 export const useSettingsStore = create(
   persist(
     (set, get) => ({
-      serverUrl: '',
-      username: '',
-      password: '',
-      isConfigured: false,
+      serverUrl: initialAuth.serverUrl,
+      username: initialAuth.username,
+      password: initialAuth.password,
+      isConfigured: initialAuth.isConfigured,
 
       // Getters for compatibility
       get replayGainEnabled() { return get().replayGainMode !== 'none'; },
@@ -34,19 +42,30 @@ export const useSettingsStore = create(
       
       theme: 'dark',
 
-      setServerConfig: (config) => set((state) => ({
-        serverUrl: config.serverUrl,
-        username: config.username,
-        password: config.password,
-        isConfigured: true
-      })),
+      setServerConfig: (config) => {
+        authCookies.set({
+          serverUrl: config.serverUrl,
+          username: config.username,
+          password: config.password,
+          isConfigured: true
+        });
+        set(() => ({
+          serverUrl: config.serverUrl,
+          username: config.username,
+          password: config.password,
+          isConfigured: true
+        }));
+      },
 
-      clearConfig: () => set({
-        serverUrl: '',
-        username: '',
-        password: '',
-        isConfigured: false
-      }),
+      clearConfig: () => {
+        authCookies.remove();
+        set({
+          serverUrl: '',
+          username: '',
+          password: '',
+          isConfigured: false
+        });
+      },
 
       updateSettings: (newSettings) => set((state) => ({
         ...state,
@@ -55,6 +74,12 @@ export const useSettingsStore = create(
     }),
     {
       name: 'navivibe-settings',
+      partialize: (state) => {
+        // Credentials (serverUrl, username, password, isConfigured) live in
+        // cookies via authCookies — exclude them from localStorage persist.
+        const { username, password, serverUrl, isConfigured, ...rest } = state;
+        return rest;
+      }
     }
   )
 );

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { PlayerBar } from './PlayerBar';
 import { QueuePanel } from '../queue/QueuePanel';
@@ -14,6 +14,8 @@ import { useSubsonic } from '../../hooks/useSubsonic';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { ToastContainer } from '../shared/Toast';
+import { PlaylistBackground } from '../playlist/PlaylistBackground';
+import { useState } from 'react';
 
 export const AppShell = () => {
   const { sidebarCollapsed } = useUIStore();
@@ -22,6 +24,9 @@ export const AppShell = () => {
   const client = useSubsonic();
   const localShuffleUrl = useSettingsStore((s) => s.localShuffleUrl);
   const { init, startHealthPolling, stopHealthPolling } = useAIShuffleStore();
+  const location = useLocation();
+  const isPlaylistRoute = location.pathname.startsWith('/playlist/');
+  const [playlistBgUrl, setPlaylistBgUrl] = useState('');
 
   // Initialize the AudioEngine once the client is available
   useEffect(() => {
@@ -29,9 +34,11 @@ export const AppShell = () => {
       if (!audioEngine) {
         initEngine(client);
       }
+      // Fetch playlists only once per session (guard in store prevents duplicate calls)
       fetchPlaylists(client);
     }
-  }, [client, audioEngine, initEngine, fetchPlaylists]);
+  }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Initialize AI shuffle server and start health polling when URL changes
   useEffect(() => {
@@ -44,26 +51,43 @@ export const AppShell = () => {
 
   return (
     <>
-      <div className="relative flex h-screen w-full bg-transparent text-ink overflow-hidden">
+      <div 
+        className="app-shell relative h-screen w-full bg-transparent text-ink overflow-hidden"
+        style={{
+          display: 'grid',
+          gridTemplateAreas: sidebarCollapsed 
+            ? `"sidebar main" "sidebar player"`
+            : `"sidebar main" "sidebar player"`,
+          gridTemplateRows: '1fr 80px',
+          gridTemplateColumns: sidebarCollapsed ? '64px 1fr' : '240px 1fr',
+          paddingLeft: '36px', // For left SideRail
+          paddingTop: '44px'   // For TopBar
+        }}
+      >
+        {isPlaylistRoute && playlistBgUrl && (
+          <PlaylistBackground url={playlistBgUrl} />
+        )}
         <SonicWaveformBackground />
         <TopBar />
         <SideRail side="left" label="NAVIVIBE · MUSIC" />
         <SideRail side="right" label="2026 · V0.1" />
 
-        <Sidebar />
+        <div style={{ gridArea: 'sidebar' }}>
+          <Sidebar />
+        </div>
         
         <main 
-          className={`main-content flex-1 transition-all duration-300 overflow-y-auto pb-player-bar z-10 pt-[44px] pr-9 ${
-            sidebarCollapsed ? 'ml-[calc(64px+36px)]' : 'ml-[calc(240px+36px)]'
-          }`}
+          className="main-content overflow-y-auto z-10 pr-9"
+          style={{ gridArea: 'main' }}
         >
-          <div className="p-8 max-w-7xl mx-auto">
-            <Outlet />
+          <div className="p-8 max-w-7xl mx-auto min-h-full">
+            <Outlet context={{ setPlaylistBgUrl }} />
           </div>
         </main>
 
         <QueuePanel />
         <NowPlayingOverlay />
+        
         <PlayerBar />
       </div>
       <ToastContainer />

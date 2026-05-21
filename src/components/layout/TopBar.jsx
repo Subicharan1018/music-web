@@ -29,7 +29,7 @@ export const TopBar = () => {
       
       {/* Left: Branding */}
       <div className="flex-1 text-left">
-        <span className="text-ink font-semibold">NAVIVIBE</span> · VOL. 01
+        <span className="text-ink font-semibold">NAVIVIBE</span>
       </div>
 
       {/* Center: Current View */}
@@ -41,8 +41,8 @@ export const TopBar = () => {
       <div className="flex-1 text-right flex items-center justify-end">
         {isConnected ? (
           <>
-            <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse inline-block mr-1.5"></span>
-            <span className="text-coral font-semibold">CONNECTED</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block mr-1.5 shadow-[0_0_4px_rgba(74,222,128,0.6)]" />
+            <span className="text-green-400 font-semibold">CONNECTED</span>
             <span className="mx-1.5">·</span>
             <span>{displayUrl}</span>
           </>

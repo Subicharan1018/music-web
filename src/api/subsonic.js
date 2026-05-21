@@ -36,28 +36,52 @@ class SubsonicClient {
     this.password = config.password || '';
     this.clientName = 'NaviVibeWeb';
     this.version = '1.16.1';
+
+    // Stable auth params — generated ONCE per client instance.
+    // A new random salt per call (old behaviour) made every cover art URL
+    // unique, permanently defeating the browser HTTP cache.
+    // Salt is entropy, not a nonce — one value per session is fine.
+    this._salt = Math.random().toString(36).substring(2, 15);
+    this._token = md5(this.password + this._salt);
   }
 
-  _generateAuthParams() {
-    const salt = Math.random().toString(36).substring(2, 15);
-    const token = md5(this.password + salt);
-    
+  // Stable params — used for cover art, metadata, playlists etc.
+  // Same URL every time → browser cache hits on repeat renders.
+  _authParams() {
     return {
       u: this.username,
-      t: token,
-      s: salt,
+      t: this._token,
+      s: this._salt,
       v: this.version,
       c: this.clientName,
-      f: 'json'
+      f: 'json',
     };
   }
 
-  _buildUrl(endpoint, extraParams = {}) {
+  // Fresh params — used only for stream URLs where a stale cached
+  // response would deliver the wrong audio. Still keeps one token
+  // per stream request, not per render.
+  _freshAuthParams() {
+    const salt = Math.random().toString(36).substring(2, 15);
+    return {
+      u: this.username,
+      t: md5(this.password + salt),
+      s: salt,
+      v: this.version,
+      c: this.clientName,
+      f: 'json',
+    };
+  }
+
+  /** @deprecated use _authParams() or _freshAuthParams() directly */
+  _generateAuthParams() {
+    return this._authParams();
+  }
+
+  _buildUrl(endpoint, extraParams = {}, useFreshToken = false) {
     if (!this.serverUrl) throw new AuthException("Server URL is not configured");
-    
     const url = new URL(`${this.serverUrl}/rest/${endpoint}`);
-    const authParams = this._generateAuthParams();
-    
+    const authParams = useFreshToken ? this._freshAuthParams() : this._authParams();
     Object.entries({ ...authParams, ...extraParams }).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (Array.isArray(value)) {
@@ -67,7 +91,6 @@ class SubsonicClient {
         }
       }
     });
-    
     return url.toString();
   }
 
@@ -203,14 +226,52 @@ class SubsonicClient {
     return this._request(ENDPOINTS.GET_LYRICS_BY_SONG_ID, { id });
   }
 
+  /**
+   * GET /rest/getSongsByGenre — fetch songs matching a genre tag.
+   * Used by the shuffle pipeline to expand the candidate pool beyond the current playlist.
+   * @param {string} genre    - exact genre label (case-sensitive on most servers)
+   * @param {number} count    - max songs to return (default 50)
+   * @param {number} offset   - pagination offset
+   * @returns {Promise<Array>} normalised Song array
+   */
+  async getSongsByGenre(genre, count = 50, offset = 0) {
+    const resp = await this._request(ENDPOINTS.GET_SONGS_BY_GENRE, { genre, count, offset });
+    const songs = resp?.songsByGenre?.song;
+    if (!Array.isArray(songs)) return [];
+    return songs;
+  }
+
+  /**
+   * GET /rest/getTopSongs — fetch top-played songs for an artist (Subsonic 1.13+).
+   * Wrapped in try/catch — older servers (< 1.13) throw a ServerException.
+   * @param {string} artistName - artist display name
+   * @param {number} count      - max songs (default 20)
+   * @returns {Promise<Array>} normalised Song array, or [] on unsupported servers
+   */
+  async getTopSongs(artistName, count = 20) {
+    try {
+      const resp = await this._request(ENDPOINTS.GET_TOP_SONGS, { artist: artistName, count });
+      const songs = resp?.topSongs?.song;
+      if (!Array.isArray(songs)) return [];
+      return songs;
+    } catch {
+      // Graceful degradation — server doesn't support this endpoint
+      return [];
+    }
+  }
+
+  // Stream URL gets a fresh token each call — prevents browser from serving
+  // a cached stream response when a different song is requested.
   stream(songId, options = {}) {
-    return this._buildUrl(ENDPOINTS.STREAM, { id: songId, ...options });
+    return this._buildUrl(ENDPOINTS.STREAM, { id: songId, ...options }, true);
   }
 
   getStreamUrl(songId, options = {}) {
     return this.stream(songId, options);
   }
 
+  // Cover art URLs are stable (same salt/token per session).
+  // This is the key to browser HTTP cache hits on album art.
   getCoverArtUrl(id, size = 300) {
     if (!id) return '';
     return this._buildUrl(ENDPOINTS.GET_COVER_ART, { id, size });
