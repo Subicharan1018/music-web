@@ -124,6 +124,7 @@ export const SettingsPage = () => {
           type: 'success',
           message: `Connected · Plays processed: ${healthData.totalPlaysProcessed?.toLocaleString() ?? 0}`,
         });
+        updateSettings({ v2ShuffleUrl: formattedUrl, v2ShuffleEnabled });
       } else {
         setV2AiTestResult({ type: 'error', message: `Server returned status: ${healthData.status || healthData.error || 'Unknown Error'}` });
       }
@@ -319,7 +320,11 @@ export const SettingsPage = () => {
           <input
             type="checkbox"
             checked={v2ShuffleEnabled}
-            onChange={(e) => setV2ShuffleEnabled(e.target.checked)}
+            onChange={(e) => {
+              const val = e.target.checked;
+              setV2ShuffleEnabled(val);
+              updateSettings({ v2ShuffleEnabled: val });
+            }}
             className="accent-purple-500 w-4 h-4"
           />
           <span className="font-sans text-sm font-bold text-white drop-shadow-sm">Enable Experimental V2 Algorithm</span>
@@ -344,6 +349,7 @@ export const SettingsPage = () => {
           <Button variant="ghost" onClick={handleTestV2AiConnection} disabled={isTestingV2Ai}>
             {isTestingV2Ai ? 'Testing…' : 'Test Connection'}
           </Button>
+          <Button variant="primary" onClick={handleSave}>Save Settings</Button>
         </div>
       )}
 

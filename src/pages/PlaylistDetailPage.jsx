@@ -14,6 +14,7 @@ import { usePlayAction } from '../hooks/usePlayAction';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { PlaylistMusicPortfolio } from '../components/playlist/PlaylistMusicPortfolio';
 import { Play, Sparkles, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
+import { useSettingsStore } from '../store/settingsStore';
 
 const formatDuration = (seconds) => {
   if (!seconds) return '0:00';
@@ -42,8 +43,9 @@ export const PlaylistDetailPage = () => {
   } = usePlaylistStore();
 
   const { setView, addToast } = useUIStore();
-  const { enableSmartShuffle, currentSong, addToQueue } = usePlayerStore();
+  const { enableSmartShuffle, enableV2Shuffle, currentSong, addToQueue } = usePlayerStore();
   const { playSong } = usePlayAction();
+  const v2ShuffleEnabled = useSettingsStore((s) => s.v2ShuffleEnabled);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -80,8 +82,16 @@ export const PlaylistDetailPage = () => {
     if (!openPlaylist?.entry?.length || isShuffling) return;
     setIsShuffling(true);
     try {
-      await enableSmartShuffle(openPlaylist.entry, { playlistName: openPlaylist.name });
-      addToast(`Smart shuffle ready — ${openPlaylist.entry.length} songs queued`, 'success');
+      const songs = openPlaylist.entry;
+      const opts  = { playlistName: openPlaylist.name };
+      console.log(`[PlaylistDetailPage] handleSmartShuffle — v2ShuffleEnabled=${v2ShuffleEnabled}`);
+      if (v2ShuffleEnabled && enableV2Shuffle) {
+        await enableV2Shuffle({ songs, ...opts });
+        addToast(`V2 AI shuffle ready — ${songs.length} songs queued`, 'success');
+      } else {
+        await enableSmartShuffle(songs, opts);
+        addToast(`Smart shuffle ready — ${songs.length} songs queued`, 'success');
+      }
     } catch (err) {
       addToast('Shuffle failed — playing in original order', 'error');
     } finally {

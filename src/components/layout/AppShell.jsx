@@ -13,6 +13,7 @@ import { usePlaylistStore } from '../../store/playlistStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
+import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { ToastContainer } from '../shared/Toast';
 import { PlaylistBackground } from '../playlist/PlaylistBackground';
 import { useState } from 'react';
@@ -23,7 +24,10 @@ export const AppShell = () => {
   const { fetchPlaylists } = usePlaylistStore();
   const client = useSubsonic();
   const localShuffleUrl = useSettingsStore((s) => s.localShuffleUrl);
+  const v2ShuffleUrl = useSettingsStore((s) => s.v2ShuffleUrl);
+  const v2ShuffleEnabled = useSettingsStore((s) => s.v2ShuffleEnabled);
   const { init, startHealthPolling, stopHealthPolling } = useAIShuffleStore();
+  const { init: initV2, startHealthPolling: startV2Polling, stopHealthPolling: stopV2Polling } = useV2ShuffleStore();
   const location = useLocation();
   const isPlaylistRoute = location.pathname.startsWith('/playlist/');
   const [playlistBgUrl, setPlaylistBgUrl] = useState('');
@@ -48,6 +52,18 @@ export const AppShell = () => {
     }
     return () => stopHealthPolling();
   }, [localShuffleUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Initialize V2 shuffle server when URL or enabled flag changes
+  useEffect(() => {
+    if (v2ShuffleEnabled && v2ShuffleUrl) {
+      console.log('[AppShell] Initializing V2 shuffle store with URL:', v2ShuffleUrl);
+      initV2(v2ShuffleUrl);
+      startV2Polling();
+    } else {
+      stopV2Polling();
+    }
+    return () => stopV2Polling();
+  }, [v2ShuffleUrl, v2ShuffleEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

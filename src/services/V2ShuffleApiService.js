@@ -93,8 +93,15 @@ export class V2ShuffleApiService {
   /**
    * POST /next
    * Gets the next batch of recommended songs.
+   * @param {string}  sessionId
+   * @param {number}  depth
+   * @param {string}  lastEndReason
+   * @param {string[]} playedTitles
+   * @param {number[]} recentListenRatios
+   * @param {number}  count        — how many songs to request (default 15, server supports dynamic)
+   * @param {string}  playlist     — optional genre hint e.g. 'melody', 'kuthu' (server boosts matching songs)
    */
-  async getNext({ sessionId, depth = 0, lastEndReason, playedTitles, recentListenRatios }) {
+  async getNext({ sessionId, depth = 0, lastEndReason, playedTitles, recentListenRatios, count = 15, playlist = null }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
 
@@ -104,9 +111,11 @@ export class V2ShuffleApiService {
       last_end_reason: lastEndReason,
       played_titles: playedTitles || [],
       recent_listen_ratios: recentListenRatios || [],
+      count,
+      ...(playlist ? { playlist } : {}),
     };
 
-    console.debug('[V2ShuffleApi] POST /next Request Payload:', JSON.stringify(payload, null, 2));
+    console.log('[V2ShuffleApi] POST /next Request Payload:', JSON.stringify(payload, null, 2));
 
     try {
       const response = await this._wrap(
@@ -121,8 +130,8 @@ export class V2ShuffleApiService {
         throw new Error(`Server returned status: ${response.status}`);
       }
       const data = await response.json();
-      console.debug('[V2ShuffleApi] POST /next Response Queue:', data.queue);
-      console.debug('[V2ShuffleApi] POST /next Response Context:', data.context);
+      console.log('[V2ShuffleApi] POST /next Response Queue:', data.queue);
+      console.log('[V2ShuffleApi] POST /next Response Context:', data.context);
       return data;
     } finally {
       clearTimeout(timer);
@@ -145,7 +154,7 @@ export class V2ShuffleApiService {
       timestamp: new Date().toISOString(),
     };
 
-    console.debug('[V2ShuffleApi] POST /feedback Payload:', JSON.stringify(payload, null, 2));
+    console.log('[V2ShuffleApi] POST /feedback Payload:', JSON.stringify(payload, null, 2));
 
     // Fire and forget
     fetch(`${this._baseUrl}/feedback`, {
@@ -154,7 +163,7 @@ export class V2ShuffleApiService {
       body: JSON.stringify(payload),
       keepalive: true, // Survive page unloads
     }).catch(err => {
-      console.debug('[V2ShuffleApi] Silent feedback failure:', err);
+      console.log('[V2ShuffleApi] Silent feedback failure:', err);
     });
   }
 }

@@ -120,9 +120,12 @@ export const PlayerBar = () => {
   const toggleShuffle = useCallback((e) => {
     e.stopPropagation();
     if (shufflePending) return; // reject while AI fetch in flight
+    console.log(`[ShuffleToggle:PlayerBar] mode=${shuffleMode} | v2ShuffleEnabled=${v2ShuffleEnabled}`);
     if (shuffleMode === 'none') enableDumbShuffle();
-    else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
-    else if (shuffleMode === 'smart' && v2ShuffleEnabled) void enableV2Shuffle();
+    else if (shuffleMode === 'dumb') {
+      if (v2ShuffleEnabled) void enableV2Shuffle();
+      else void enableSmartShuffle(); // S6: no queue arg
+    }
     else disableShuffle();
   }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 

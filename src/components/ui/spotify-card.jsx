@@ -3,6 +3,7 @@ import { SkipBack, SkipForward, Play, Pause, Heart, Repeat, Shuffle, Volume2 } f
 import { usePlayer } from '../../hooks/usePlayer';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
+import { useSettingsStore } from '../../store/settingsStore';
 import { ProgressBar } from '../player/ProgressBar';
 import { VolumeSlider } from '../player/VolumeSlider';
 
@@ -10,6 +11,7 @@ const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/20
 
 export const SpotifyCard = () => {
   const client = useSubsonic();
+  const { v2ShuffleEnabled } = useSettingsStore();
   const {
     currentSong,
     isPlaying,
@@ -20,6 +22,7 @@ export const SpotifyCard = () => {
     shuffleMode,
     shufflePending,
     enableSmartShuffle,
+    enableV2Shuffle,
     enableDumbShuffle,
     disableShuffle,
     repeatMode,
@@ -35,7 +38,10 @@ export const SpotifyCard = () => {
   const toggleShuffle = () => {
     if (shufflePending) return; // C3: reject while AI fetch in flight
     if (shuffleMode === 'none') enableDumbShuffle();
-    else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
+    else if (shuffleMode === 'dumb') {
+      if (v2ShuffleEnabled && enableV2Shuffle) void enableV2Shuffle();
+      else void enableSmartShuffle(); // S6: no queue arg
+    }
     else disableShuffle();
   };
 

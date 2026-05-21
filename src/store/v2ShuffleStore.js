@@ -107,7 +107,7 @@ export const useV2ShuffleStore = create(
           recommendedQueue: [],
           currentContext: null,
         });
-        console.debug('[v2ShuffleStore] Session reset manually');
+        console.log('[v2ShuffleStore] Session reset manually');
       },
 
       /**
@@ -143,8 +143,10 @@ export const useV2ShuffleStore = create(
 
       /**
        * Fetches the next batch of recommended songs.
+       * @param {number}  count    — number of songs to request (default 15)
+       * @param {string}  playlist — optional genre hint ('melody', 'kuthu', etc.)
        */
-      fetchNext: async () => {
+      fetchNext: async ({ count = 15, playlist = null } = {}) => {
         if (!_serviceInstance || _serviceInstance._unconfigured) return;
         
         set({ isLoadingQueue: true, queueError: null });
@@ -157,6 +159,8 @@ export const useV2ShuffleStore = create(
             playedTitles,
             recentListenRatios,
             lastEndReason,
+            count,
+            playlist,
           });
 
           if (!response.queue || !response.queue.length) {

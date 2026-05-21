@@ -592,6 +592,7 @@ export const usePlayerStore = create((set, get) => ({
       // Temporarily inject the seed into played titles so context knows it
       useV2ShuffleStore.setState({ playedTitles: [seedSong?.title] });
 
+      // Fisher-Yates shuffle the pool (minus seed) — this becomes _playlistPool for refills
       const poolWithoutSeed = pool.filter((s) => s.id !== seedSong?.id);
       for (let i = poolWithoutSeed.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -599,25 +600,33 @@ export const usePlayerStore = create((set, get) => ({
       }
       _playlistPool = poolWithoutSeed;
 
-      const firstBatch = _playlistPool.splice(0, SMART_LOCAL_BATCH);
-
+      // V2 generates recommendations by title from its model — unlike V1 which reorders
+      // a batch you send it, V2 returns ANY song titles it deems appropriate.
+      // We must match against the FULL pool, not a random 15-song slice.
       let ordered = null;
-      console.log(`[V2Shuffle] → Sending POST /next for initial batch`);
-      await v2Store.fetchNext();
+      const playlistHint = options.playlistName || null;
+      console.log(`[V2Shuffle] → Sending POST /next | count=15 | playlist=${playlistHint ?? 'none'}`);
+      await v2Store.fetchNext({ count: 15, playlist: playlistHint });
       
       const freshV2 = useV2ShuffleStore.getState();
-      const mapped = mapRecommendationsToSongs(freshV2.recommendedQueue, firstBatch);
+      console.log(`[V2Shuffle] Server returned ${freshV2.recommendedQueue.length} recommendations — mapping against full pool (${poolWithoutSeed.length} songs)`);
+      const mapped = mapRecommendationsToSongs(freshV2.recommendedQueue, poolWithoutSeed);
       
       if (mapped.length > 0) {
-        ordered = mapped;
-        console.log(`[V2Shuffle] ✓ Server returned ${mapped.length} valid songs`);
+        // Take up to SMART_LOCAL_BATCH from the AI-mapped results as initial queue
+        ordered = mapped.slice(0, SMART_LOCAL_BATCH);
+        console.log(`[V2Shuffle] ✓ Mapped ${mapped.length} songs — using first ${ordered.length} as initial queue`);
       } else {
-        throw new Error('V2 mapping produced 0 songs');
+        // Graceful fallback: AI names didn't match local library (different language/transliteration).
+        // Use the first SMART_LOCAL_BATCH of the shuffled pool in order.
+        console.warn(`[V2Shuffle] Mapping produced 0 matches — AI song titles don't match local library titles. Using shuffled pool order as fallback.`);
+        ordered = poolWithoutSeed.slice(0, SMART_LOCAL_BATCH);
       }
 
       const orderedDeduped = seedSong ? ordered.filter((s) => s.id !== seedSong.id) : ordered;
       const initialQueue = seedSong ? [seedSong, ...orderedDeduped] : orderedDeduped;
 
+      // Remove initial queue songs from the pool to avoid duplicates in refills
       const queuedIds = new Set(initialQueue.map((s) => s.id));
       _playlistPool = _playlistPool.filter((s) => !queuedIds.has(s.id));
 
@@ -639,10 +648,9 @@ export const usePlayerStore = create((set, get) => ({
         }
       }
       
-      console.log(`[V2Shuffle] ✓ Queue ready — ${initialQueue.length} songs`);
+      console.log(`[V2Shuffle] ✓ Queue ready — ${initialQueue.length} songs (pool: ${_playlistPool.length} remaining)`);
     } catch (e) {
-      console.error('[V2Shuffle] Failed to start V2 shuffle (failing loudly):', e);
-      // Fail loudly: we don't fall back, we just abort the shuffle enable.
+      console.error('[V2Shuffle] Failed to start V2 shuffle:', e);
     } finally {
       _shuffleLock = false;
       set({ shufflePending: false });
@@ -655,6 +663,7 @@ export const usePlayerStore = create((set, get) => ({
    * • Clears _playlistPool (S4).
    * • Uses originalQueue as base when available.
    */
+
   enableDumbShuffle: () => {
     const state = get();
     const currentSong = state.currentSong;

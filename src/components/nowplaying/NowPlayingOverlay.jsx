@@ -245,11 +245,10 @@ const QueuePanel = ({ queue, currentIndex, client }) => {
           return (
             <div
               key={`${i}-${song.id}`}
-              className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 cursor-default ${
-                isCurrent
+              className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 cursor-default ${isCurrent
                   ? 'bg-[#c0392b]/20 border border-[#c0392b]/25'
                   : 'hover:bg-[#c0392b]/10 hover:border hover:border-[#c0392b]/15 border border-transparent'
-              }`}
+                }`}
             >
               <div className="w-5 text-center flex-shrink-0">
                 {isCurrent
@@ -260,11 +259,10 @@ const QueuePanel = ({ queue, currentIndex, client }) => {
                 {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className={`text-sm truncate font-sans transition-colors ${
-                  isCurrent
+                <div className={`text-sm truncate font-sans transition-colors ${isCurrent
                     ? 'text-white font-semibold'
                     : 'text-white/65 group-hover:text-[#e8623a] group-hover:font-medium'
-                }`}>
+                  }`}>
                   {song.title || '—'}
                 </div>
                 <div className="text-[11px] text-white/30 truncate font-mono uppercase tracking-wider mt-0.5 group-hover:text-white/45 transition-colors">
@@ -300,15 +298,15 @@ export const NowPlayingOverlay = () => {
   // false = queue (BB8 day), true = lyrics (BB8 night)
   const [showLyrics, setShowLyrics] = useState(false);
   const { isConfigured, isHealthy, health } = useServerHealth();
-  
+
   const fetchNext = useAIShuffleStore((s) => s.fetchNext);
   const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
   const resetSession = useAIShuffleStore((s) => s.resetSession);
-  
+
   const fetchNextV2 = useV2ShuffleStore((s) => s.fetchNext);
   const v2SessionStatus = useV2ShuffleStore((s) => s.sessionStatus);
   const resetSessionV2 = useV2ShuffleStore((s) => s.resetSession);
-  
+
   const { v2ShuffleEnabled } = useSettingsStore();
 
   const { lines, currentLineIndex, isSynced, isLoading: lyricsLoading, error: lyricsError, handleScroll, registerLineRef } = useLyrics(currentSong, (position || 0) * 1000);
@@ -341,8 +339,10 @@ export const NowPlayingOverlay = () => {
   const toggleShuffle = useCallback(() => {
     if (shufflePending) return; // reject while AI fetch in flight (C3)
     if (shuffleMode === 'none') enableDumbShuffle();
-    else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
-    else if (shuffleMode === 'smart' && v2ShuffleEnabled) void enableV2Shuffle();
+    else if (shuffleMode === 'dumb') {
+      if (v2ShuffleEnabled) void enableV2Shuffle();
+      else void enableSmartShuffle(); // S6: no queue arg
+    }
     else disableShuffle();
   }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 
@@ -373,19 +373,19 @@ export const NowPlayingOverlay = () => {
   const RepeatIcon = repeatMode === 'one' ? Repeat1 : Repeat;
   const shuffleColor = shuffleMode === 'smart' ? '#ff8c00' : shuffleMode === 'smart-v2' ? '#a855f7' : shuffleMode === 'dumb' ? '#dc143c' : null;
 
-  const handleAI = useCallback(() => { 
+  const handleAI = useCallback(() => {
     if (shuffleMode === 'smart-v2') {
       fetchNextV2();
     } else {
-      fetchNext({ current: currentSong?.title }); 
+      fetchNext({ current: currentSong?.title });
     }
   }, [fetchNext, fetchNextV2, currentSong?.title, shuffleMode]);
-  
-  const handleResetSession = useCallback(async () => { 
+
+  const handleResetSession = useCallback(async () => {
     if (shuffleMode === 'smart-v2') {
       await resetSessionV2();
     } else {
-      await resetSession(currentSong?.title); 
+      await resetSession(currentSong?.title);
     }
   }, [resetSession, resetSessionV2, currentSong?.title, shuffleMode]);
 
@@ -460,10 +460,10 @@ export const NowPlayingOverlay = () => {
               </div>
               <button type="button" onClick={handleAI}
                 className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all hover:scale-105 active:scale-95 mt-1"
-                style={{ 
-                  background: shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.25)' : 'rgba(192,57,43,0.25)', 
-                  border: `1px solid ${shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.45)' : 'rgba(192,57,43,0.45)'}`, 
-                  color: shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262' 
+                style={{
+                  background: shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.25)' : 'rgba(192,57,43,0.25)',
+                  border: `1px solid ${shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.45)' : 'rgba(192,57,43,0.45)'}`,
+                  color: shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262'
                 }}
                 aria-label="AI next">
                 <Sparkles size={10} /><span>{shuffleMode === 'smart-v2' ? 'V2✦' : 'AI✦'}</span>

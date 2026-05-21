@@ -30,11 +30,13 @@ export const AIShuffleButton = ({ className = "" }) => {
       enableDumbShuffle();
       addToast('Standard Shuffle Enabled', 'info');
     } else if (shuffleMode === 'dumb') {
-      await enableSmartShuffle(); // S6: no queue arg — store uses originalQueue
-      addToast('AI Smart Shuffle Active', 'success');
-    } else if (shuffleMode === 'smart' && v2ShuffleEnabled) {
-      await enableV2Shuffle();
-      addToast('V2 Context-Aware AI Active', 'success');
+      if (v2ShuffleEnabled) {
+        await enableV2Shuffle();
+        addToast('V2 Context-Aware AI Active', 'success');
+      } else {
+        await enableSmartShuffle(); // S6: no queue arg — store uses originalQueue
+        addToast('AI Smart Shuffle Active', 'success');
+      }
     } else {
       disableShuffle();
       addToast('Shuffle Disabled', 'info');

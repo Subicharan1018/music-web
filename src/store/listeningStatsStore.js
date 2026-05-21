@@ -22,11 +22,11 @@ export const ERR_NOT_CONFIGURED   = 'NOT_CONFIGURED';
 export const ERR_ENDPOINT_404     = 'ENDPOINT_NOT_SUPPORTED';
 export const ERR_NETWORK          = 'NETWORK_ERROR';
 
-// ── Stats fetch helper (pure, no Zustand dependency) ─────────────────────────
-async function _fetchStats(baseUrl, period) {
+// ── V2 Stats fetch helper (pure, no Zustand dependency) ──────────────────────
+async function _fetchV2(baseUrl, endpoint) {
   if (!baseUrl) throw new Error(ERR_NOT_CONFIGURED);
 
-  const url = `${baseUrl.replace(/\/+$/, '')}/listening-log/stats?period=${period}`;
+  const url = `${baseUrl.replace(/\/+$/, '')}/${endpoint}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -45,7 +45,17 @@ async function _fetchStats(baseUrl, period) {
   if (res.status === 404) throw new Error(ERR_ENDPOINT_404);
   if (!res.ok) throw new Error(`SERVER_ERROR_${res.status}`);
 
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    // Python's json.dumps maps NaN to unquoted NaN which breaks strict JSON.
+    const sanitized = text
+      .replace(/:\s*NaN/g, ': null')
+      .replace(/:\s*Infinity/g, ': null')
+      .replace(/:\s*-Infinity/g, ': null');
+    return JSON.parse(sanitized);
+  }
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -57,6 +67,9 @@ export const useListeningStatsStore = create((set, get) => ({
 
   // TTL cache: { [period]: { data: {...}, fetchedAt: number } }
   cache: {},
+  historyCache: null,
+  composersCache: null,
+  modelStatusCache: null,
 
   // ── Selectors ───────────────────────────────────────────────────────────────
 
@@ -68,18 +81,11 @@ export const useListeningStatsStore = create((set, get) => ({
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Switch the active period tab and fetch if not cached.
-   */
   setSelectedPeriod: (period) => {
     set({ selectedPeriod: period });
     get().fetchStats(period);
   },
 
-  /**
-   * Fetch stats for [period] if not in TTL cache.
-   * Respects the 15min TTL — rapid tab toggles hit cache.
-   */
   fetchStats: async (period) => {
     const { cache } = get();
     period = period ?? get().selectedPeriod;
@@ -88,44 +94,89 @@ export const useListeningStatsStore = create((set, get) => ({
     const cached = cache[period];
     if (cached && Date.now() - cached.fetchedAt < TTL_MS) return;
 
-    const baseUrl = useSettingsStore.getState().localShuffleUrl;
+    const baseUrl = useSettingsStore.getState().v2ShuffleUrl; // V2 Migration
 
     set({ isLoading: true, error: null });
     try {
-      const data = await _fetchStats(baseUrl, period);
+      const data = await _fetchV2(baseUrl, `listening-log/stats?period=${period}`);
       set(s => ({
         isLoading: false,
         cache: { ...s.cache, [period]: { data, fetchedAt: Date.now() } },
       }));
     } catch (e) {
-      const errorCode = e.message.startsWith('SERVER_ERROR') || Object.values({
-        ERR_NOT_CONFIGURED, ERR_ENDPOINT_404, ERR_NETWORK,
-      }).includes(e.message)
-        ? e.message
-        : ERR_NETWORK;
-      set({ isLoading: false, error: errorCode });
+      set({ isLoading: false, error: e.message || ERR_NETWORK });
     }
   },
 
-  /**
-   * Force-invalidate the TTL cache for a specific period (or all periods).
-   * Used by the refresh button in StatsPage.
-   */
+  fetchHistory: async (limit = 15) => {
+    const { historyCache } = get();
+    if (historyCache && Date.now() - historyCache.fetchedAt < TTL_MS) return historyCache.data;
+
+    const baseUrl = useSettingsStore.getState().v2ShuffleUrl;
+    try {
+      const data = await _fetchV2(baseUrl, `listening-log/history?limit=${limit}`);
+      set({ historyCache: { data, fetchedAt: Date.now() } });
+      return data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  },
+
+  fetchComposers: async () => {
+    const { composersCache } = get();
+    if (composersCache && Date.now() - composersCache.fetchedAt < TTL_MS) return composersCache.data;
+
+    const baseUrl = useSettingsStore.getState().v2ShuffleUrl;
+    try {
+      const data = await _fetchV2(baseUrl, `listening-log/composers`);
+      set({ composersCache: { data, fetchedAt: Date.now() } });
+      return data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  },
+
+  fetchModelStatus: async () => {
+    const { modelStatusCache } = get();
+    if (modelStatusCache && Date.now() - modelStatusCache.fetchedAt < TTL_MS) return modelStatusCache.data;
+
+    const baseUrl = useSettingsStore.getState().v2ShuffleUrl;
+    try {
+      const data = await _fetchV2(baseUrl, `model/status`);
+      set({ modelStatusCache: { data, fetchedAt: Date.now() } });
+      return data;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  },
+
+  fetchSongDeepDive: async (title) => {
+    const baseUrl = useSettingsStore.getState().v2ShuffleUrl;
+    try {
+      return await _fetchV2(baseUrl, `listening-log/song?title=${encodeURIComponent(title)}`);
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  },
+
   invalidate: (period = null) => {
     set(s => {
       const c = { ...s.cache };
       if (period) delete c[period];
       else Object.keys(c).forEach(k => delete c[k]);
-      return { cache: c, error: null };
+      return { cache: c, error: null, historyCache: null, composersCache: null, modelStatusCache: null };
     });
   },
 
-  /**
-   * Refresh: invalidate + re-fetch the current period.
-   */
   refresh: async () => {
     const period = get().selectedPeriod;
     get().invalidate(period);
     await get().fetchStats(period);
+    // Also re-fetch new endpoints proactively if they were being viewed? 
+    // They fetch automatically on mount so it's fine.
   },
 }));

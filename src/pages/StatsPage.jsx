@@ -12,7 +12,7 @@ import { useAffinityStore } from '../store/affinityStore';
 import { useSubsonic } from '../hooks/useSubsonic';
 import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
 import { usePlayAction } from '../hooks/usePlayAction';
-import { Flame, Play, RefreshCw, Server, AlertCircle, Settings2 } from 'lucide-react';
+import { Flame, Play, RefreshCw, Server, AlertCircle, Settings2, X, Info } from 'lucide-react';
 import { useAIShuffleStore } from '../store/aiShuffleStore';
 import { useListeningStatsStore, ERR_NOT_CONFIGURED, ERR_ENDPOINT_404, ERR_NETWORK } from '../store/listeningStatsStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -318,6 +318,15 @@ export const StatsPage = () => {
         </div>
       </div>
 
+      {/* Nº 09 · LISTENING HISTORY */}
+      <ServerListeningHistory />
+
+      {/* Nº 10 · COMPOSER LOYALTY */}
+      <ComposerLoyaltyStats />
+
+      {/* Nº 11 · AI MODEL STATUS */}
+      <AIModelStatus />
+
     </div>
   );
 };
@@ -332,7 +341,8 @@ const PERIODS = [
 const ServerListeningStats = () => {
   const { playSong } = usePlayAction();
   const client = useSubsonic();
-  const localShuffleUrl = useSettingsStore(s => s.localShuffleUrl);
+  const v2ShuffleUrl = useSettingsStore(s => s.v2ShuffleUrl);
+  const [deepDiveSong, setDeepDiveSong] = React.useState(null);
 
   const selectedPeriod   = useListeningStatsStore(s => s.selectedPeriod);
   const isLoading        = useListeningStatsStore(s => s.isLoading);
@@ -346,11 +356,11 @@ const ServerListeningStats = () => {
 
   // Kick off initial fetch
   React.useEffect(() => {
-    if (localShuffleUrl) fetchStats('weekly');
-  }, [localShuffleUrl, fetchStats]);
+    if (v2ShuffleUrl) fetchStats('weekly');
+  }, [v2ShuffleUrl, fetchStats]);
 
   // ── State 1: URL not configured ─────────────────────────────────────────────
-  if (!localShuffleUrl) {
+  if (!v2ShuffleUrl) {
     return (
       <div className="mb-14">
         <SectionHeader num="Nº 07" title="Server Listening Stats" />
@@ -456,6 +466,12 @@ const ServerListeningStats = () => {
             <span className="font-serif text-4xl italic text-ink">{totalMinutes.toLocaleString()}</span>
             <p className="font-sans text-[10px] uppercase tracking-widest text-ink-faint mt-0.5">Minutes</p>
           </div>
+          {data.skips !== undefined && (
+            <div>
+              <span className="font-serif text-4xl italic text-ink">{data.skips.toLocaleString()}</span>
+              <p className="font-sans text-[10px] uppercase tracking-widest text-ink-faint mt-0.5">Skips</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -500,13 +516,7 @@ const ServerListeningStats = () => {
           <h3 className="font-sans text-[10px] tracking-[0.15em] uppercase text-ink-faint mb-3">Top Tracks</h3>
           <div className="space-y-0">
             {topTracks.map((t, idx) => (
-              <button
-                key={`${t.title}-${idx}`}
-                onClick={() => playSong({ id: t.id || t.title, title: t.title, artist: t.artist }, [])}
-                className={`w-full flex items-center gap-4 py-2.5 border-b border-ink/5 hover:bg-ink/3 transition-colors text-left group ${
-                  idx === 0 ? 'border-l-4 border-coral pl-4 -ml-4' : ''
-                }`}
-              >
+              <div key={`${t.title}-${idx}`} className={`w-full flex items-center gap-4 py-2.5 border-b border-ink/5 hover:bg-ink/3 transition-colors text-left group ${idx === 0 ? 'border-l-4 border-coral pl-4 -ml-4' : ''}`}>
                 <span className="font-mono text-xs text-coral w-6 shrink-0">{String(idx+1).padStart(2,'0')}</span>
                 <div className="flex-1 min-w-0">
                   <p className={`truncate font-serif ${idx === 0 ? 'text-xl italic text-ink' : 'text-base text-ink'}`}>{t.title}</p>
@@ -514,43 +524,220 @@ const ServerListeningStats = () => {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="font-mono text-xs text-ink-faint">{t.play_count}×</span>
-                  <Play size={11} className="text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <button onClick={() => setDeepDiveSong(t.title)} title="Deep Dive" className="text-ink-faint hover:text-coral transition-colors">
+                    <Info size={14} />
+                  </button>
+                  <button onClick={() => playSong({ id: t.id || t.title, title: t.title, artist: t.artist }, [])} title="Play" className="text-ink-faint hover:text-ink transition-colors">
+                    <Play size={14} />
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Plays */}
-      {recent.length > 0 && (
-        <div className="mb-4">
-          <h3 className="font-sans text-[10px] tracking-[0.15em] uppercase text-ink-faint mb-3">Recent Plays</h3>
-          <div className="space-y-0">
-            {recent.slice(0, 15).map((r) => {
-              const coverUrl = r.cover_art || '';
-              return (
-                <div key={r.id} className="flex items-center gap-4 py-2.5 border-b border-ink/5">
-                  <div className="w-8 h-8 rounded overflow-hidden bg-ink/8 shrink-0">
-                    {coverUrl
-                      ? <img src={coverUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      : <div className="w-full h-full flex items-center justify-center"><span className="font-serif text-xs text-ink-faint">♪</span></div>
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-serif text-sm text-ink truncate">{r.title}</p>
-                    <p className="font-sans text-xs text-ink-mute truncate">{r.artist}</p>
-                  </div>
-                  <span className="font-mono text-[10px] text-ink-faint shrink-0">{dayjs(r.played_at).fromNow()}</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
 
       {!data && !isLoading && (
         <p className="font-serif italic text-ink-mute py-6">No data for this period yet.</p>
+      )}
+
+      <SongDeepDiveDialog open={!!deepDiveSong} title={deepDiveSong} onClose={() => setDeepDiveSong(null)} />
+    </div>
+  );
+};
+
+// ── Song Deep Dive Dialog ───────────────────────────────────────────────────
+const SongDeepDiveDialog = ({ open, onClose, title }) => {
+  const fetchSongDeepDive = useListeningStatsStore(s => s.fetchSongDeepDive);
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (open && title) {
+      setLoading(true);
+      fetchSongDeepDive(title).then(res => {
+        setData(res);
+        setLoading(false);
+      });
+    }
+  }, [open, title, fetchSongDeepDive]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-paper p-6 rounded-xl border border-ink/10 shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-start mb-6 border-b border-ink/5 pb-4">
+          <div>
+            <h2 className="font-serif text-2xl text-ink">Deep Dive</h2>
+            <p className="font-sans text-xs text-ink-mute uppercase tracking-widest">{title}</p>
+          </div>
+          <button onClick={onClose} className="text-ink-mute hover:text-ink transition-colors"><X size={20}/></button>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-10"><RefreshCw size={24} className="animate-spin text-ink-faint" /></div>
+        ) : !data ? (
+          <p className="font-serif italic text-ink-mute">No deep dive data found for this track.</p>
+        ) : (
+          <div className="space-y-6">
+             {data.features && (
+               <div>
+                 <h3 className="font-sans text-[10px] tracking-[0.15em] uppercase text-ink-faint mb-3">Audio Features</h3>
+                 <div className="grid grid-cols-2 gap-4">
+                   {Object.entries(data.features).map(([k, v]) => (
+                     <div key={k} className="bg-ink/5 p-3 rounded border border-ink/5">
+                       <p className="font-sans text-[10px] uppercase text-ink-mute mb-1">{k}</p>
+                       <p className="font-mono text-sm text-ink">{typeof v === 'number' ? v.toFixed(3) : v}</p>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+             
+             {data.context_buckets && Object.keys(data.context_buckets).length > 0 && (
+               <div>
+                 <h3 className="font-sans text-[10px] tracking-[0.15em] uppercase text-ink-faint mb-3">Context Buckets</h3>
+                 <div className="space-y-2">
+                   {Object.entries(data.context_buckets).map(([bucket, val]) => (
+                     <div key={bucket} className="flex justify-between items-center py-2 border-b border-ink/5">
+                       <span className="font-serif text-sm capitalize text-ink">{bucket.replace(/_/g, ' ')}</span>
+                       <span className="font-mono text-xs text-coral">{Number(val).toFixed(2)}</span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Server Listening History ──────────────────────────────────────────────────
+const ServerListeningHistory = () => {
+  const fetchHistory = useListeningStatsStore(s => s.fetchHistory);
+  const [history, setHistory] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const client = useSubsonic();
+
+  React.useEffect(() => {
+    setLoading(true);
+    fetchHistory(20).then(res => {
+      const arr = res?.items || res?.history || res;
+      setHistory(Array.isArray(arr) ? arr : []);
+      setLoading(false);
+    });
+  }, [fetchHistory]);
+
+  return (
+    <div className="mb-14 reveal-item">
+      <SectionHeader num="Nº 09" title="Listening History" />
+      {loading ? (
+        [1,2,3,4].map(i => <div key={i} className="h-10 bg-ink/5 animate-pulse rounded mb-2"></div>)
+      ) : history.length === 0 ? (
+        <p className="font-serif italic text-ink-mute py-6">No history available.</p>
+      ) : (
+        <div className="space-y-0">
+          {history.map((r, idx) => {
+            const coverUrl = client?.getCoverArtUrl?.(r.cover_art, 64) || r.cover_art || '';
+            return (
+              <div key={idx} className="flex items-center gap-4 py-3 border-b border-ink/5">
+                <div className="w-10 h-10 rounded overflow-hidden bg-ink/8 shrink-0">
+                  {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center"><span className="font-serif text-xs text-ink-faint">♪</span></div>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-serif text-base text-ink truncate">{r.title}</p>
+                  <p className="font-sans text-xs text-ink-mute truncate">{r.artist}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-mono text-[10px] text-ink-faint">{dayjs(r.played_at_ist || r.played_at || r.timestamp).fromNow()}</p>
+                  {r.end_reason && <p className="font-mono text-[9px] text-coral uppercase mt-0.5">{r.end_reason}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Composer Loyalty Stats ──────────────────────────────────────────────────
+const ComposerLoyaltyStats = () => {
+  const fetchComposers = useListeningStatsStore(s => s.fetchComposers);
+  const [composers, setComposers] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    setLoading(true);
+    fetchComposers().then(res => {
+      setComposers(res?.composers || res || []);
+      setLoading(false);
+    });
+  }, [fetchComposers]);
+
+  return (
+    <div className="mb-14 reveal-item">
+      <SectionHeader num="Nº 10" title="Composer Loyalty" />
+      {loading ? (
+        [1,2,3].map(i => <div key={i} className="h-10 bg-ink/5 animate-pulse rounded mb-2"></div>)
+      ) : composers.length === 0 ? (
+        <p className="font-serif italic text-ink-mute py-6">No composer data available.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+          {composers.slice(0, 20).map((c, idx) => (
+            <div key={idx} className="flex items-center justify-between py-2 border-b border-ink/5">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="font-mono text-xs text-coral w-5 shrink-0">{String(idx+1).padStart(2,'0')}</span>
+                <span className="font-serif text-sm text-ink truncate">{c.composer}</span>
+              </div>
+              <div className="flex items-center gap-4 shrink-0 text-right">
+                <span className="font-mono text-xs text-ink-mute">{c.play_count}×</span>
+                <span className="font-mono text-xs text-ink w-10">{(c.loyalty_ratio * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── AI Model Status ─────────────────────────────────────────────────────────
+const AIModelStatus = () => {
+  const fetchModelStatus = useListeningStatsStore(s => s.fetchModelStatus);
+  const [status, setStatus] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    setLoading(true);
+    fetchModelStatus().then(res => {
+      setStatus(res);
+      setLoading(false);
+    });
+  }, [fetchModelStatus]);
+
+  return (
+    <div className="mb-14 reveal-item">
+      <SectionHeader num="Nº 11" title="AI Model Status" />
+      {loading ? (
+        [1,2].map(i => <div key={i} className="h-10 bg-ink/5 animate-pulse rounded mb-2"></div>)
+      ) : !status ? (
+        <p className="font-serif italic text-ink-mute py-6">Model status unavailable.</p>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           {Object.entries(status).map(([k, v]) => {
+             if (typeof v === 'object') return null; // Skip complex nested objects for the grid
+             return (
+               <div key={k} className="bg-ink/5 border border-ink/10 rounded-lg p-5">
+                 <p className="font-sans text-[10px] tracking-widest uppercase text-ink-faint mb-2">{k.replace(/_/g, ' ')}</p>
+                 <p className="font-mono text-2xl text-ink">{typeof v === 'number' ? v.toLocaleString() : v}</p>
+               </div>
+             )
+           })}
+        </div>
       )}
     </div>
   );
