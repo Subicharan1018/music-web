@@ -46,6 +46,8 @@ export const PlaylistMusicPortfolio = ({
   const [activeBg, setActiveBg] = useState(defaultBackground);
   const [visibleCount, setVisibleCount] = useState(50);
   const observerRef = useRef(null);
+  // Debounce background swaps so fast scrolling doesn't thrash the bg image
+  const bgDebounceRef = useRef(null);
 
   const loadMoreRef = useCallback((node) => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -95,15 +97,21 @@ export const PlaylistMusicPortfolio = ({
   }, [songs, getCoverUrl]);
 
 
+  // Row hover: highlight is IMMEDIATE (no debounce) so it feels snappy.
+  // Background change is DEBOUNCED 280ms so fast-scrolling doesn't thrash images.
   const handleRowHover = useCallback((index, coverUrl) => {
-    setActiveIndex(index);
-    setActiveBg(coverUrl || defaultBackground);
+    setActiveIndex(index); // instant highlight
+    if (bgDebounceRef.current) clearTimeout(bgDebounceRef.current);
+    bgDebounceRef.current = setTimeout(() => {
+      setActiveBg(coverUrl || defaultBackground);
+    }, 280);
   }, [defaultBackground]);
 
   const handleRowLeave = useCallback(() => {}, []);
 
   const handleContainerLeave = useCallback(() => {
     setActiveIndex(-1);
+    if (bgDebounceRef.current) clearTimeout(bgDebounceRef.current);
     setActiveBg(defaultBackground);
   }, [defaultBackground]);
 

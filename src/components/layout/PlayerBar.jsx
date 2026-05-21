@@ -13,7 +13,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward,
-  Repeat, Repeat1, Shuffle, Volume2, VolumeX, Sparkles,
+  Repeat, Repeat1, Volume2, VolumeX, Sparkles,
 } from 'lucide-react';
 import { usePlayer } from '../../hooks/usePlayer';
 import { useSubsonic } from '../../hooks/useSubsonic';
@@ -21,6 +21,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { ShuffleModeToggle } from '../shared/ShuffleModeToggle';
 
 /* ── helpers ── */
 const fmt = (s) => {
@@ -184,12 +185,13 @@ export const PlayerBar = () => {
           onClick={openOverlay}
           onKeyDown={(e) => { if (e.key === 'Enter') openOverlay(); }}
           style={{
-            background: 'rgba(10,0,0,0.92)',
-            backdropFilter: 'blur(24px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-            borderTop: '1px solid rgba(180,20,20,0.18)',
+            background: 'rgba(6,0,0,0.97)',
+            backdropFilter: 'blur(16px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+            borderTop: '1px solid rgba(220,20,60,0.28)',
+            boxShadow: '0 -4px 32px rgba(0,0,0,0.9)',
           }}
-          className="relative w-full rounded-2xl px-3 py-3 flex items-center gap-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] overflow-hidden"
+          className="relative w-full rounded-2xl px-3 py-3 flex items-center gap-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.9)] overflow-hidden"
         >
           {/* Art */}
           <div
@@ -204,7 +206,7 @@ export const PlayerBar = () => {
                 style={{ '--spin-state': isPlaying ? 'running' : 'paused' }}
               />
             ) : (
-              <div className="w-full h-full bg-[#150000] art-placeholder rounded-md" />
+              <div className="w-full h-full bg-[#120000] art-placeholder rounded-md" />
             )}
           </div>
 
@@ -213,7 +215,7 @@ export const PlayerBar = () => {
             <div className="text-sm font-serif italic font-bold text-white truncate">
               {currentSong?.title || 'No track selected'}
             </div>
-            <div className="text-[11px] font-mono text-white/40 truncate uppercase tracking-widest">
+            <div className="text-[11px] font-mono text-white/35 truncate uppercase tracking-widest">
               {currentSong?.artist || '—'}
             </div>
           </div>
@@ -222,8 +224,11 @@ export const PlayerBar = () => {
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); isPlaying ? pause() : play(); }}
-            className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #c0392b, #8b0000)' }}
+            className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+            style={{
+              background: '#8B0000',
+              boxShadow: isPlaying ? '0 0 20px rgba(220,20,60,0.7)' : '0 0 10px rgba(139,0,0,0.4)',
+            }}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying
@@ -237,7 +242,7 @@ export const PlayerBar = () => {
             className="absolute bottom-0 left-0 h-[2px] rounded-full"
             style={{
               width: `${duration > 0 ? (position / duration) * 100 : 0}%`,
-              background: 'linear-gradient(90deg, #c0392b, #8b0000)',
+              background: 'linear-gradient(90deg, #8B0000, #DC143C)',
               transition: 'width 0.3s linear',
             }}
           />
@@ -256,10 +261,11 @@ export const PlayerBar = () => {
           : 'opacity-100 translate-y-0'
         }`}
       style={{
-        background: 'rgba(10,0,0,0.92)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-        borderTop: '1px solid rgba(180,20,20,0.18)',
+        background: 'rgba(6,0,0,0.97)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        borderTop: '1px solid rgba(220,20,60,0.28)',
+        boxShadow: '0 -4px 40px rgba(0,0,0,0.95)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
@@ -317,8 +323,13 @@ export const PlayerBar = () => {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); isPlaying ? pause() : play(); }}
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-[0_0_16px_rgba(192,57,43,0.5)] hover:shadow-[0_0_24px_rgba(192,57,43,0.7)] hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #c0392b, #8b0000)' }}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 flex-shrink-0"
+              style={{
+                background: '#8B0000',
+                boxShadow: isPlaying
+                  ? '0 0 22px rgba(220,20,60,0.75)'
+                  : '0 0 12px rgba(139,0,0,0.5)',
+              }}
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying
@@ -400,23 +411,14 @@ export const PlayerBar = () => {
             </div>
           )}
 
-          {/* Shuffle */}
+          {/* Shuffle — segmented pill */}
           {!isCompact && (
-            <button
-              type="button"
-              onClick={toggleShuffle}
-              title={
-                shuffleMode === 'smart' ? (v2ShuffleEnabled ? 'AI Shuffle (click for V2)' : 'AI Shuffle (click to disable)')
-                  : shuffleMode === 'smart-v2' ? 'V2 Context AI (click to disable)'
-                  : shuffleMode === 'dumb' ? 'Shuffle (click for AI)'
-                    : 'Shuffle off'
-              }
-              className="transition-all duration-200 hover:scale-110 active:scale-95"
-              style={{ color: shuffleColor || 'rgba(255,255,255,0.3)' }}
-              aria-label="Shuffle"
-            >
-              <Shuffle size={17} />
-            </button>
+            <ShuffleModeToggle
+              shuffleMode={shuffleMode}
+              shufflePending={shufflePending}
+              onToggle={toggleShuffle}
+              v2ShuffleEnabled={v2ShuffleEnabled}
+            />
           )}
 
           {/* Repeat */}
@@ -444,17 +446,19 @@ export const PlayerBar = () => {
             disabled={shufflePending}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 flex-shrink-0"
             style={{
-              background: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
-                ? (shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.35)' : 'rgba(180,20,20,0.35)') 
-                : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${(shuffleMode === 'smart-v2' ? v2Active : aiActive) 
-                ? (shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.7)' : 'rgba(192,57,43,0.7)') 
-                : 'rgba(255,255,255,0.12)'}`,
-              color: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
-                ? (shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262') 
-                : 'rgba(255,255,255,0.4)',
-              boxShadow: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
-                ? (shuffleMode === 'smart-v2' ? '0 0 12px rgba(168,85,247,0.3)' : '0 0 12px rgba(192,57,43,0.3)') 
+              background: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+                ? 'rgba(139,0,0,0.35)'
+                : 'rgba(220,20,60,0.05)',
+              border: `1px solid ${
+                (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+                  ? 'rgba(220,20,60,0.6)'
+                  : 'rgba(220,20,60,0.15)'
+              }`,
+              color: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+                ? '#ff6b6b'
+                : 'rgba(255,255,255,0.3)',
+              boxShadow: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+                ? '0 0 12px rgba(139,0,0,0.4)'
                 : 'none',
               opacity: shufflePending ? 0.5 : 1,
               animation: shufflePending ? 'pulse 1s ease-in-out infinite' : 'none',

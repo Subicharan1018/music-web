@@ -107,13 +107,28 @@ export const PlaylistRow = ({
     <li
       ref={setNodeRef}
       style={{ ...style, minHeight: '52px' }}
-      className={`group relative flex items-center gap-2 border-b border-ink/10 text-paper font-sans uppercase text-xs transition-all duration-200
-        ${isActive && !isSortableDragging ? 'opacity-100 bg-white/5' : 'opacity-60 hover:opacity-100'}
+      className={`group relative flex items-center gap-2 border-b text-xs uppercase font-sans transition-all duration-150
+        ${
+          isActive && !isSortableDragging
+            ? 'bg-[rgba(139,0,0,0.22)] border-b-[rgba(220,20,60,0.15)] opacity-100'
+            : 'bg-transparent border-b-[rgba(255,255,255,0.06)] opacity-60 hover:opacity-100 hover:bg-[rgba(139,0,0,0.10)]'
+        }
         ${isPlaying ? 'pl-[5px]' : 'pl-2'}
       `}
       onMouseEnter={() => !isSortableDragging && onMouseEnter(index, coverArtUrl)}
       onMouseLeave={onMouseLeave}
     >
+      {/* Crimson left accent line — only on active/hover */}
+      {(isActive || isPlaying) && !isSortableDragging && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
+          style={{
+            height: isPlaying ? '60%' : '50%',
+            background: isPlaying ? '#DC143C' : '#8B0000',
+            boxShadow: isPlaying ? '0 0 8px rgba(220,20,60,0.7)' : '0 0 6px rgba(139,0,0,0.5)',
+          }}
+        />
+      )}
       {/* Drag handle — only visible on hover */}
       <span
         {...attributes}
@@ -134,32 +149,44 @@ export const PlaylistRow = ({
       )}
 
       {/* ARTIST */}
-      <span ref={artistRef} className={`flex-1 min-w-0 truncate pr-2 ${isPlaying ? 'text-coral' : 'text-paper'}`}>
+      <span ref={artistRef} className={`flex-1 min-w-0 truncate pr-2 transition-colors duration-150 ${
+        isPlaying ? 'text-[#DC143C]' : isActive ? 'text-white' : 'text-white/55'
+      }`}>
         {songValues.artist}
       </span>
 
       {/* TITLE */}
-      <span ref={titleRef} className={`flex-1 min-w-0 truncate pr-2 ${isPlaying ? 'text-coral/80' : 'text-paper/80'}`}>
+      <span ref={titleRef} className={`flex-1 min-w-0 truncate pr-2 transition-colors duration-150 ${
+        isPlaying ? 'text-[#DC143C]/80' : isActive ? 'text-white/90' : 'text-white/50'
+      }`}>
         {songValues.title}
       </span>
 
       {/* ALBUM — hidden on small screens */}
-      <span ref={albumRef} className="w-[18%] min-w-0 truncate pr-2 text-paper/60 hidden md:inline-block">
+      <span ref={albumRef} className={`w-[18%] min-w-0 truncate pr-2 hidden md:inline-block transition-colors duration-150 ${
+        isActive ? 'text-white/60' : 'text-white/35'
+      }`}>
         {songValues.album}
       </span>
 
       {/* GENRE — hidden on medium screens */}
-      <span ref={genreRef} className="w-[12%] min-w-0 truncate pr-2 text-paper/50 hidden lg:inline-block">
+      <span ref={genreRef} className={`w-[12%] min-w-0 truncate pr-2 hidden lg:inline-block transition-colors duration-150 ${
+        isActive ? 'text-white/50' : 'text-white/30'
+      }`}>
         {songValues.genre}
       </span>
 
       {/* YEAR */}
-      <span ref={yearRef} className="w-12 text-right shrink-0 text-paper/50">
+      <span ref={yearRef} className={`w-12 text-right shrink-0 transition-colors duration-150 ${
+        isActive ? 'text-white/50' : 'text-white/30'
+      }`}>
         {songValues.year}
       </span>
 
       {/* DURATION */}
-      <span ref={durationRef} className="w-12 text-right shrink-0 text-paper/40 font-mono hidden sm:inline-block">
+      <span ref={durationRef} className={`w-12 text-right shrink-0 font-mono hidden sm:inline-block transition-colors duration-150 ${
+        isActive ? 'text-white/45' : 'text-white/25'
+      }`}>
         {songValues.duration}
       </span>
 
@@ -168,7 +195,7 @@ export const PlaylistRow = ({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onPlay(song, index); }}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-coral/20 text-paper/60 hover:text-coral transition-colors"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-[rgba(220,20,60,0.25)] transition-colors"
           title="Play from here"
         >
           <Play size={11} fill="currentColor" />
@@ -176,7 +203,7 @@ export const PlaylistRow = ({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onAddToQueue(song); }}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10 text-paper/60 hover:text-paper transition-colors"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
           title="Add to queue"
         >
           <Plus size={11} />
@@ -184,7 +211,7 @@ export const PlaylistRow = ({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(song.id, index); }}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-500/20 text-paper/40 hover:text-red-400 transition-colors"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-[#DC143C] hover:bg-[rgba(220,20,60,0.15)] transition-colors"
           title="Remove from playlist"
         >
           <X size={11} />

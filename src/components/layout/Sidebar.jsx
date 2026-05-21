@@ -17,8 +17,8 @@ const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
     className={({ isActive }) =>
       `relative flex items-center gap-3.5 py-2.5 mx-2 px-3 my-0.5 rounded-lg transition-all duration-200 group ${
         isActive
-          ? 'bg-coral/10 text-white'
-          : 'text-white/35 hover:bg-white/[0.04] hover:text-white/75'
+          ? 'text-white'
+          : 'text-white/30 hover:bg-[rgba(220,20,60,0.06)] hover:text-white/70'
       }`
     }
     title={collapsed ? label : undefined}
@@ -84,10 +84,10 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className={`h-full bg-paper/70 backdrop-blur-2xl border-r border-white/[0.04] shadow-[6px_0_24px_rgba(0,0,0,0.6)] transition-all duration-300 z-40 flex flex-col ${
+      className={`h-full bg-[#080808] border-r transition-all duration-300 z-40 flex flex-col ${
         sidebarCollapsed ? 'sidebar-width-collapsed' : 'sidebar-width'
       }`}
-      style={{ borderRight: '1px solid rgba(220,20,60,0.07)' }}
+      style={{ borderRight: '1px solid rgba(220,20,60,0.12)' }}
     >
       {/* Header */}
       <div className="flex items-center h-14 px-4 mb-2 mt-1 shrink-0">

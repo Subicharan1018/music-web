@@ -70,7 +70,7 @@ export const AIShuffleButton = ({ className = "" }) => {
           backgroundColor: "rgba(255, 127, 80, 0.1)"
         });
       } else if (shuffleMode === 'smart-v2') {
-        // V2 AI state: faster pulse, purple color
+        // V2 AI state: deep blood red pulse — darker and more intense than V1
         gsap.to(buttonRef.current, {
           scale: 1.05,
           duration: 0.6,
@@ -85,8 +85,8 @@ export const AIShuffleButton = ({ className = "" }) => {
           yoyo: true,
           repeat: -1,
           ease: "power2.inOut",
-          borderColor: "rgba(168, 85, 247, 0.4)", // purple-500
-          backgroundColor: "rgba(168, 85, 247, 0.15)"
+          borderColor: "rgba(139, 0, 0, 0.6)",
+          backgroundColor: "rgba(139, 0, 0, 0.18)"
         });
       } else if (shuffleMode === 'dumb') {
         // Standard shuffle: steady active color
@@ -124,9 +124,9 @@ export const AIShuffleButton = ({ className = "" }) => {
       onClick={cycleShuffle}
       className={`relative p-2.5 rounded-full flex items-center justify-center transition-colors focus:outline-none ${
         shuffleMode === 'smart' 
-          ? 'text-coral hover:text-coral/80' 
+          ? 'text-[#DC143C] hover:text-[#e34262]' 
           : shuffleMode === 'smart-v2'
-            ? 'text-purple-500 hover:text-purple-400'
+            ? 'text-[#c0392b] hover:text-[#DC143C]'
           : shuffleMode === 'dumb' 
             ? 'text-ink hover:text-ink/80' 
             : 'text-ink/40 hover:text-ink/70'
@@ -158,8 +158,8 @@ export const AIShuffleButton = ({ className = "" }) => {
             <path d="M4.5 15.5C6.5 15.5 7.5 8.5 10.5 8.5H19.5" />
             <polyline points="16.5 5.5 19.5 8.5 16.5 11.5" />
             <polyline points="16.5 12.5 19.5 15.5 16.5 18.5" />
-            <circle cx="13" cy="8.5" r="1.5" className={`stroke-none ${shuffleMode === 'smart-v2' ? 'fill-purple-500' : 'fill-coral'}`} />
-            <circle cx="11" cy="15.5" r="1.5" className={`stroke-none ${shuffleMode === 'smart-v2' ? 'fill-purple-500' : 'fill-coral'}`} />
+            <circle cx="13" cy="8.5" r="1.5" className={`stroke-none ${shuffleMode === 'smart-v2' ? 'fill-[#8B0000]' : 'fill-[#DC143C]'}`} />
+            <circle cx="11" cy="15.5" r="1.5" className={`stroke-none ${shuffleMode === 'smart-v2' ? 'fill-[#8B0000]' : 'fill-[#DC143C]'}`} />
           </>
         ) : (
           <>
@@ -175,8 +175,8 @@ export const AIShuffleButton = ({ className = "" }) => {
 
       {/* Mini state badge */}
       {(shuffleMode === 'smart' || shuffleMode === 'smart-v2') && (
-        <span className={`absolute -top-1 -right-1 text-[8px] font-sans font-bold text-paper px-1 rounded-sm leading-none py-0.5 ${
-          shuffleMode === 'smart-v2' ? 'bg-purple-500' : 'bg-coral'
+        <span className={`absolute -top-1 -right-1 text-[8px] font-sans font-bold text-white px-1 rounded-sm leading-none py-0.5 ${
+          shuffleMode === 'smart-v2' ? 'bg-[#8B0000]' : 'bg-[#DC143C]'
         }`}>
           {shuffleMode === 'smart-v2' ? 'V2' : 'AI'}
         </span>
@@ -193,7 +193,7 @@ export const AIShuffleButton = ({ className = "" }) => {
       )}
       {shuffleMode === 'smart-v2' && (
         <span
-          className="absolute -bottom-1 -right-1 w-1.5 h-1.5 rounded-full ring-1 ring-ink/10 bg-purple-500 animate-pulse"
+          className="absolute -bottom-1 -right-1 w-1.5 h-1.5 rounded-full ring-1 ring-ink/10 bg-[#8B0000] animate-pulse"
           title="V2 Server active"
         />
       )}

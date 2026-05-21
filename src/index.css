@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 
 @theme {
   --color-paper: #000000;
@@ -123,12 +124,12 @@
    * children was breaking TopBar (fixed), SideRail (fixed), and the layout.
    */
 
-  /* Sidebar <aside> — dark glass on playlist pages (not QueuePanel which is .fixed) */
+  /* Sidebar <aside> — deep black glass on playlist pages (not QueuePanel which is .fixed) */
   body.playlist-page-active .app-shell aside:not(.fixed) {
-    background: rgba(5, 5, 8, 0.60) !important;
+    background: rgba(4, 0, 0, 0.88) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-right: 1px solid rgba(220, 20, 60, 0.14) !important;
   }
 
   /* Sidebar text goes light */
@@ -147,13 +148,13 @@
     background: transparent !important;
   }
 
-  /* TopBar goes dark on playlist pages */
+  /* TopBar goes dark crimson-tinted on playlist pages */
   body.playlist-page-active .app-shell>div.fixed.top-0 {
-    background: rgba(5, 5, 8, 0.75) !important;
+    background: rgba(4, 0, 0, 0.88) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
-    color: rgba(255, 255, 255, 0.7) !important;
+    border-bottom: 1px solid rgba(220, 20, 60, 0.18) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
   }
 
   /* TopBar text all white on playlist pages */
@@ -172,12 +173,12 @@
     z-index: 100 !important;
   }
 
-  /* QueuePanel — dark glass on playlist pages */
+  /* QueuePanel — deep black glass on playlist pages */
   body.playlist-page-active aside.fixed.right-0 {
-    background: rgba(8, 8, 12, 0.92) !important;
+    background: rgba(6, 0, 0, 0.95) !important;
     backdrop-filter: blur(28px) !important;
     -webkit-backdrop-filter: blur(28px) !important;
-    border-left-color: rgba(255, 255, 255, 0.08) !important;
+    border-left: 1px solid rgba(220, 20, 60, 0.14) !important;
   }
 
   /* QueuePanel text colors */
@@ -537,13 +538,11 @@
   align-items: center;
   gap: 16px;
   min-width: 0;
-  background-color: rgba(239, 231, 210, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(10, 0, 0, 0.96);
   padding: 8px 24px;
   border-radius: 16px;
-  border: 1px solid rgba(21, 20, 15, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(220, 20, 60, 0.14);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(220,20,60,0.06);
 }
 
 .track-info {
@@ -576,7 +575,7 @@
 
 .artist {
   font-size: 11px;
-  color: rgba(21, 20, 15, 0.6);
+  color: rgba(255, 255, 255, 0.38);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -588,12 +587,13 @@
 
 .track {
   font-size: 14px;
-  color: var(--color-ink);
+  color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin: 0;
   font-weight: 700;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
 }
 
 .controls {
@@ -618,18 +618,20 @@
 }
 
 .ctrl:hover {
-  background-color: rgba(21, 20, 15, 0.05);
+  background-color: rgba(220, 20, 60, 0.1);
 }
 
 .ctrl-play {
   width: 44px;
   height: 44px;
-  background-color: var(--color-coral);
+  background-color: #8B0000;
   color: #fff;
+  box-shadow: 0 0 16px rgba(139,0,0,0.5);
 }
 
 .ctrl-play:hover {
-  background-color: var(--color-coral-soft);
+  background-color: #DC143C;
+  box-shadow: 0 0 24px rgba(220,20,60,0.7);
   transform: scale(1.05);
 }
 
@@ -661,7 +663,7 @@
 .bar {
   flex: 1;
   height: 6px;
-  background-color: rgba(21, 20, 15, 0.1);
+  background-color: rgba(255, 255, 255, 0.07);
   border-radius: 9999px;
   overflow: hidden;
   cursor: pointer;
@@ -680,11 +682,178 @@
 
 .time {
   font-size: 12px;
-  color: rgba(21, 20, 15, 0.6);
+  color: rgba(255, 255, 255, 0.3);
   font-variant-numeric: tabular-nums;
   display: flex;
   gap: 4px;
   flex-shrink: 0;
   width: 80px;
   justify-content: flex-end;
+
+/* ── NowPlaying Obsidian Pulse Styles ── */
+.np-root {
+  background: #0a0808;
+  border-radius: 16px;
+  overflow: hidden;
+  font-family: 'Space Mono', monospace;
+  position: relative;
+}
+
+.np-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 40% at 22% 55%, rgba(160,30,20,0.22) 0%, transparent 70%),
+              radial-gradient(ellipse 30% 50% at 80% 20%, rgba(100,20,60,0.12) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.np-source-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #e34262;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* VINYL ART */
+.vinyl-wrap {
+  position: relative;
+  width: min(260px, 32vw);
+  height: min(260px, 32vw);
+  flex-shrink: 0;
+}
+
+.vinyl-disc {
+  position: absolute; inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    #1a1a1a 0%, #111 8%, #1c1c1c 9%,
+    #111 22%, #1c1c1c 23%,
+    #111 36%, #1c1c1c 37%,
+    #111 50%
+  );
+}
+.vinyl-disc::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(255,255,255,0.03) 0deg,
+    transparent 120deg,
+    rgba(255,255,255,0.03) 240deg,
+    transparent 360deg
+  );
+}
+
+.vinyl-art {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px #111, 0 0 0 4px rgba(255,255,255,0.06);
+}
+.vinyl-art img {
+  width: 100%; height: 100%; object-fit: cover;
+  filter: saturate(1.1) contrast(1.05);
+}
+.vinyl-hole {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #0a0808;
+  border: 1px solid rgba(255,255,255,0.08);
+  z-index: 3;
+}
+.vinyl-shine {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(ellipse 60% 40% at 30% 25%, rgba(255,255,255,0.07) 0%, transparent 60%);
+  pointer-events: none; z-index: 2;
+}
+
+/* WAVEFORM */
+.waveform-bar {
+  width: 100%;
+  max-width: 260px;
+  height: 36px;
+  display: flex; align-items: center; gap: 2px;
+}
+.waveform-bar span {
+  flex: 1;
+  border-radius: 2px;
+  background: #c0392b;
+}
+
+/* PROGRESS */
+.progress-track {
+  position: relative; height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px; cursor: pointer;
+  overflow: visible;
+}
+.progress-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #8b0000, #c0392b, #e34262);
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute; right: -4px; top: 50%;
+  transform: translateY(-50%);
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #f0ece8;
+  box-shadow: 0 0 0 2px rgba(192,57,43,0.5);
+  transition: transform 0.15s;
+}
+.progress-track:hover .progress-fill::after { transform: translateY(-50%) scale(1.4); }
+
+/* TRANSPORT */
+.play-btn-obsidian {
+  width: 56px; height: 56px; border-radius: 50%;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  background: #c0392b;
+  color: white;
+  transition: all 0.15s;
+  box-shadow: 0 0 0 1px rgba(192,57,43,0.3), 0 4px 20px rgba(192,57,43,0.35);
+}
+.play-btn-obsidian::before {
+  content: '';
+  position: absolute; inset: -4px; border-radius: 50%;
+  border: 1px solid rgba(192,57,43,0.2);
+}
+.play-btn-obsidian:hover { transform: scale(1.05); box-shadow: 0 0 0 1px rgba(192,57,43,0.5), 0 6px 28px rgba(192,57,43,0.55); }
+
+/* VOLUME */
+.vol-track-obsidian {
+  flex: 1; height: 3px; background: rgba(255,255,255,0.08);
+  border-radius: 2px; position: relative; cursor: pointer;
+}
+.vol-fill-obsidian {
+  height: 100%; border-radius: 2px;
+  background: rgba(255,255,255,0.22);
+}
+
+/* QUEUE ITEM */
+.q-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  cursor: default;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  margin-bottom: 2px;
+}
+.q-item.current {
+  background: rgba(192,57,43,0.12);
+  border-color: rgba(192,57,43,0.2);
+}
+.q-item:not(.current):hover {
+  background: #191616;
+  border-color: rgba(255,255,255,0.07);
 }
