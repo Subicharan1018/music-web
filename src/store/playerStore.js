@@ -1,8 +1,17 @@
 /**
  * playerStore.js
  * Zustand store for queue, playback state, and current song.
- * Integrates AudioEngine and ScrobbleService.
- * Implements BUG 5 debounce for localStorage queue persistence.
+ *
+ * Shuffle Fix v2 (2026-05-21) — 7 bugs resolved:
+ *   S1: enableSmartShuffle now calls audioEngine.load() + preloadNext (via _loadAndPlay)
+ *   S2: enableDumbShuffle does NOT call _loadAndPlay (current song keeps playing)
+ *   S3: disableShuffle doesn't restart audio — only restores queue index
+ *   S4: _playlistPool cleared in disableShuffle + enableDumbShuffle
+ *   S5: _shuffleLock prevents concurrent enableSmartShuffle calls
+ *   S6: enableSmartShuffle defaults to originalQueue as pool source, not shuffled queue
+ *   S7: isShuffled + shuffleEnabled removed; derive from shuffleMode !== 'none'
+ *   C3: shufflePending field drives loading UI on AI✦ button
+ *   C4: loadPersistedState v2 migration strips stale fields
  */
 
 import { create } from 'zustand';
@@ -12,146 +21,228 @@ import { applyShuffleAlgorithm } from '../services/ShuffleService';
 import { useAIShuffleStore } from './aiShuffleStore';
 import { mapRecommendationsToSongs } from '../utils/mapRecommendations';
 import { useAffinityStore } from './affinityStore';
-import { useSettingsStore } from './settingsStore';
+import * as ListeningLog from '../services/listeningLog';
+
+// ── Smart Local shuffle module-level state ──────────────────────────────────
+// Not in Zustand — keeps serializable store clean.
+// Mirrors Flutter's _playlistPool + _isFetchingSmartLocal.
+let _playlistPool = [];
+let _isFetchingSmartLocal = false;
+let _shuffleLock = false;          // S5: guard against concurrent enableSmartShuffle
+const SMART_LOCAL_BATCH     = 15;
+const SMART_LOCAL_THRESHOLD = 3;
+
+// ── Persistence migration ────────────────────────────────────────────────────
+// C4: bump PERSIST_VERSION to strip stale fields (isShuffled, shuffleEnabled)
+const PERSIST_VERSION = 2;
+const PERSIST_KEY = 'navivibe-player-queue';
 
 const loadPersistedState = () => {
   try {
-    const data = localStorage.getItem('navivibe-player-queue');
-    if (data) return JSON.parse(data);
+    const raw = localStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+
+    // v2 migration: strip stale boolean fields, derive shuffleMode
+    const version = data.__version ?? 1;
+    if (version < PERSIST_VERSION) {
+      delete data.isShuffled;
+      delete data.shuffleEnabled;
+      if (!data.shuffleMode) data.shuffleMode = 'none';
+      // Reset shuffle state on reload — don't restore a mid-shuffle queue
+      data.shuffleMode = 'none';
+      data.originalQueue = [];
+    }
+    data.__version = PERSIST_VERSION;
+    return data;
   } catch (e) {
-    console.error('Failed to load persisted player state', e);
+    console.error('[playerStore] Failed to load persisted state', e);
+    return null;
   }
-  return {
-    queue: [],
-    currentIndex: 0,
-    currentSong: null,
-    volume: 1.0,
-    shuffleEnabled: false, // Legacy boolean, kept for backward compatibility if needed, or remove? I will keep it for now but we use shuffleMode.
-    shuffleMode: 'none',
-    originalQueue: [],
-    repeatMode: 'none',
-    gainValue: 0.0,
-    isShuffled: false
-  };
 };
 
-const initialState = loadPersistedState();
+const DEFAULT_STATE = {
+  queue: [],
+  currentIndex: 0,
+  currentSong: null,
+  volume: 1.0,
+  shuffleMode: 'none',    // 'none' | 'dumb' | 'smart'
+  originalQueue: [],
+  repeatMode: 'none',
+  gainValue: 0.0,
+  shufflePending: false,  // C3: true while AI HTTP fetch is in flight
+};
 
+const persisted = loadPersistedState();
+const initialState = { ...DEFAULT_STATE, ...persisted };
+
+// ── _loadAndPlay ─────────────────────────────────────────────────────────────
+// S1/C2: Load a new song into AudioEngine and preload the next one.
+// Called ONLY by enableSmartShuffle — dumb shuffle keeps current song playing.
+// `nextSong` is passed explicitly to avoid reading stale store state.
+function _loadAndPlay(song, state, nextSong = null) {
+  const { audioEngine, subsonicClient, scrobbleService } = state;
+  if (!audioEngine || !subsonicClient || !song) return;
+
+  console.log(`[SmartShuffle] Loading seed: "${song.title}" into AudioEngine`);
+
+  const streamUrl = subsonicClient.stream(song.id);
+  audioEngine.load(song, streamUrl, true);
+  scrobbleService?.onTrackChange();
+  scrobbleService?.onPlay(song);
+
+  // C2: Preload queue[1] so the first next() call has no network stall.
+  // We use the explicitly-passed nextSong to avoid a stale store read.
+  if (nextSong) {
+    const nextUrl = subsonicClient.stream(nextSong.id);
+    audioEngine.preloadNext(nextSong, nextUrl);
+    console.log(`[SmartShuffle] Preloaded next: "${nextSong.title}"`);
+  }
+}
+
+// ── _triggerSmartLocalRefill ─────────────────────────────────────────────────
+// Background refill — mirrors Flutter's _fetchAndReorderSmartLocal().
+// Called when remainingAhead <= SMART_LOCAL_THRESHOLD and pool has songs.
+async function _triggerSmartLocalRefill(getState) {
+  if (_isFetchingSmartLocal || _playlistPool.length === 0) return;
+  _isFetchingSmartLocal = true;
+
+  try {
+    const state = getState();
+    const currentSong = state.currentSong;
+    if (!currentSong) return;
+
+    const batch = _playlistPool.splice(0, SMART_LOCAL_BATCH);
+    if (batch.length === 0) return;
+
+    console.log(`[SmartLocal] Refilling for: "${currentSong.title}" | pool remaining: ${_playlistPool.length}`);
+
+    let orderedBatch = null;
+    const aiStore = useAIShuffleStore.getState();
+
+    if (aiStore.isConfigured && aiStore.isHealthy) {
+      try {
+        console.log(`[SmartLocal] → Sending /next request for refill batch (${batch.length} songs)`);
+        await aiStore.fetchNext({
+          current: currentSong.title || '',
+          artist:  currentSong.artist || '',
+          count:   SMART_LOCAL_BATCH,
+        });
+        const fresh = useAIShuffleStore.getState();
+        const mapped = mapRecommendationsToSongs(fresh.recommendedQueue, batch);
+        if (mapped.length >= 3) {
+          orderedBatch = mapped;
+          console.log(`[SmartLocal] ✓ AI ordered ${mapped.length} songs for refill`);
+        }
+      } catch (e) {
+        console.warn('[SmartLocal] AI refill request failed, using raw batch order:', e.message);
+      }
+    }
+
+    const toAppend = orderedBatch || batch;
+
+    // Drain pool of songs now queued
+    const appendedIds = new Set(toAppend.map((s) => s.id));
+    _playlistPool = _playlistPool.filter((s) => !appendedIds.has(s.id));
+
+    usePlayerStore.setState((s) => ({ queue: [...s.queue, ...toAppend] }));
+
+    console.log(`[SmartLocal] Appended ${toAppend.length} songs. Pool remaining: ${_playlistPool.length}`);
+  } catch (e) {
+    console.error('[SmartLocal] Refill failed:', e);
+  } finally {
+    _isFetchingSmartLocal = false;
+  }
+}
+
+// ── Store ────────────────────────────────────────────────────────────────────
 export const usePlayerStore = create((set, get) => ({
-  queue: initialState.queue,
-  currentIndex: initialState.currentIndex,
+  ...initialState,
   isPlaying: false,
-  currentSong: initialState.currentSong,
   position: 0,
   duration: 0,
-  volume: initialState.volume,
-  shuffleEnabled: initialState.shuffleEnabled,
-  shuffleMode: initialState.shuffleMode || 'none',
-  isShuffled: initialState.isShuffled || false,
-  originalQueue: initialState.originalQueue || [],
-  repeatMode: initialState.repeatMode,
-  gainValue: initialState.gainValue || 0.0,
-  // 'model' | 'cold_start' | 'fallback' | 'legacy' | 'local' | null
-  // Drives the AI label in NowPlayingOverlay. Always defined after shuffle.
-  queueSource: null,
-  
+
   audioEngine: null,
   scrobbleService: null,
   subsonicClient: null,
 
+  // ── Engine init ────────────────────────────────────────────────────────────
   initEngine: (client) => {
-    const currentEngine = get().audioEngine;
-    if (currentEngine) return; // Guard: only init once
+    if (get().audioEngine) return; // guard: init once
 
     const scrobbleService = new ScrobbleService({
       subsonicClient: client,
       onScrobble: (song, listenMs) => {
         useAffinityStore.getState().recordPlay(song, listenMs);
-      }
+      },
     });
-    
+
     const engine = new AudioEngine({
-      onTrackEnd: () => {
-        get().next(true);
-      },
-      onStateChange: (isPlaying) => {
-        set({ isPlaying });
-      },
-      onPositionUpdate: () => {
-        // We poll inside the hook
-      },
-      onSkip: (song) => {
-        useAffinityStore.getState().recordSkip(song);
-      }
+      onTrackEnd: () => { get().next(true); },
+      onStateChange: (isPlaying) => { set({ isPlaying }); },
+      onPositionUpdate: () => { /* polled in usePlayer */ },
+      onSkip: (song) => { useAffinityStore.getState().recordSkip(song); },
     });
 
     engine.setVolume(get().volume);
-
-    set({ 
-      audioEngine: engine, 
-      scrobbleService, 
-      subsonicClient: client 
-    });
+    set({ audioEngine: engine, scrobbleService, subsonicClient: client });
   },
 
+  // ── Playback ───────────────────────────────────────────────────────────────
   play: (song = null) => {
     const state = get();
-    const { audioEngine, scrobbleService, subsonicClient, queue, currentIndex } = state;
-    
+    const { audioEngine, scrobbleService, subsonicClient, queue, currentIndex, shuffleMode } = state;
     if (!audioEngine || !subsonicClient) return;
 
     if (song) {
-      // Find the song in the queue to update index, or add it if not found?
-      // Assuming play(song) means play this exact track right now (e.g. clicked in list)
-      // Usually it replaces the queue or finds index. For now, let's just play it.
-      const index = queue.findIndex(s => s.id === song.id);
-      
+      const index = queue.findIndex((s) => s.id === song.id);
       const streamUrl = subsonicClient.stream(song.id);
       audioEngine.load(song, streamUrl, true);
       scrobbleService.onTrackChange();
       scrobbleService.onPlay(song);
-      
-      set({ 
-        currentSong: song, 
-        currentIndex: index >= 0 ? index : currentIndex,
-        isPlaying: true 
+      ListeningLog.onSongStarted(song, {
+        sourceContext:  shuffleMode !== 'none' ? 'shuffle' : 'queue',
+        shuffleActive:  shuffleMode !== 'none',
+        queuePosition:  index >= 0 ? index : currentIndex,
       });
-
+      set({
+        currentSong: song,
+        currentIndex: index >= 0 ? index : currentIndex,
+        isPlaying: true,
+      });
       // Preload next
-      const nextIdx = index >= 0 ? index + 1 : currentIndex + 1;
+      const nextIdx = (index >= 0 ? index : currentIndex) + 1;
       if (nextIdx < queue.length) {
         audioEngine.preloadNext(queue[nextIdx], subsonicClient.stream(queue[nextIdx].id));
       }
     } else {
-      // Resume
       audioEngine.play();
-      if (state.currentSong) {
-        scrobbleService.onPlay(state.currentSong);
-      }
+      if (state.currentSong) scrobbleService.onPlay(state.currentSong);
       set({ isPlaying: true });
     }
   },
 
   pause: () => {
     const { audioEngine, scrobbleService } = get();
-    if (audioEngine) audioEngine.pause();
-    if (scrobbleService) scrobbleService.onPause();
+    audioEngine?.pause();
+    scrobbleService?.onPause();
+    ListeningLog.onPause();
     set({ isPlaying: false });
   },
 
   next: (autoAdvanced = false) => {
     const state = get();
-    const { queue, currentIndex, repeatMode, audioEngine, scrobbleService, subsonicClient } = state;
-    
+    const { queue, currentIndex, repeatMode, audioEngine, scrobbleService, subsonicClient, shuffleMode } = state;
     if (queue.length === 0) return;
 
     let nextIndex = currentIndex + 1;
-    
     if (nextIndex >= queue.length) {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
         if (autoAdvanced) {
+          // Close the open event before stopping
+          if (state.currentSong) ListeningLog.onSongEnded(state.currentSong, 0);
           audioEngine?.stop();
           scrobbleService?.onTrackChange();
           set({ isPlaying: false, position: 0 });
@@ -162,11 +253,9 @@ export const usePlayerStore = create((set, get) => ({
 
     const nextSong = queue[nextIndex];
     if (audioEngine && subsonicClient) {
-      const streamUrl = subsonicClient.stream(nextSong.id);
-      audioEngine.load(nextSong, streamUrl, true);
+      audioEngine.load(nextSong, subsonicClient.stream(nextSong.id), true);
       scrobbleService?.onTrackChange();
       scrobbleService?.onPlay(nextSong);
-      
       // Preload next-next
       if (nextIndex + 1 < queue.length) {
         audioEngine.preloadNext(queue[nextIndex + 1], subsonicClient.stream(queue[nextIndex + 1].id));
@@ -175,267 +264,374 @@ export const usePlayerStore = create((set, get) => ({
       }
     }
 
+    // onSongStarted closes the previous event and opens the new one
+    ListeningLog.onSongStarted(nextSong, {
+      sourceContext: shuffleMode !== 'none' ? 'shuffle' : 'queue',
+      shuffleActive: shuffleMode !== 'none',
+      queuePosition: nextIndex,
+    });
+
     set({ currentIndex: nextIndex, currentSong: nextSong, isPlaying: true });
+
+    // Smart Local: trigger background refill when ≤ SMART_LOCAL_THRESHOLD remain ahead
+    const fresh = get();
+    if (fresh.shuffleMode === 'smart' && _playlistPool.length > 0) {
+      const remainingAhead = fresh.queue.length - 1 - nextIndex;
+      if (remainingAhead <= SMART_LOCAL_THRESHOLD) {
+        _triggerSmartLocalRefill(get);
+      }
+    }
   },
 
   prev: () => {
     const state = get();
-    const { queue, currentIndex, audioEngine, scrobbleService, subsonicClient } = state;
-    
+    const { queue, currentIndex, audioEngine, scrobbleService, subsonicClient, shuffleMode } = state;
     if (queue.length === 0) return;
-    
+
     let prevIndex = currentIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = queue.length - 1;
-    }
+    if (prevIndex < 0) prevIndex = queue.length - 1;
 
     const prevSong = queue[prevIndex];
     if (audioEngine && subsonicClient) {
-      const streamUrl = subsonicClient.stream(prevSong.id);
-      audioEngine.load(prevSong, streamUrl, true);
+      audioEngine.load(prevSong, subsonicClient.stream(prevSong.id), true);
       scrobbleService?.onTrackChange();
       scrobbleService?.onPlay(prevSong);
-      
-      // Preload next
-      let nextIndex = prevIndex + 1;
-      if (nextIndex >= queue.length) nextIndex = 0;
-      audioEngine.preloadNext(queue[nextIndex], subsonicClient.stream(queue[nextIndex].id));
+      // Preload next from prev position
+      const nextIdx = prevIndex + 1 < queue.length ? prevIndex + 1 : 0;
+      audioEngine.preloadNext(queue[nextIdx], subsonicClient.stream(queue[nextIdx].id));
     }
+
+    // onSongStarted closes the previous event and opens the new one
+    ListeningLog.onSongStarted(prevSong, {
+      sourceContext: shuffleMode !== 'none' ? 'shuffle' : 'queue',
+      shuffleActive: shuffleMode !== 'none',
+      queuePosition: prevIndex,
+    });
 
     set({ currentIndex: prevIndex, currentSong: prevSong, isPlaying: true });
   },
 
   seek: (seconds) => {
     const { audioEngine, scrobbleService } = get();
-    if (audioEngine) audioEngine.seek(seconds);
-    if (scrobbleService) scrobbleService.onSeek();
+    audioEngine?.seek(seconds);
+    scrobbleService?.onSeek();
     set({ position: seconds });
   },
 
   setVolume: (volume) => {
     const { audioEngine, currentSong } = get();
-    if (audioEngine) audioEngine.setVolume(volume, currentSong);
+    audioEngine?.setVolume(volume, currentSong);
     set({ volume });
   },
 
   setGainValue: (gainValue) => set({ gainValue }),
 
   setQueue: (newQueue, startIndex = 0) => {
-    const clampedIndex = Math.min(Math.max(0, startIndex), Math.max(0, newQueue.length - 1));
-    set({ 
-      queue: newQueue, 
-      currentIndex: clampedIndex, 
-      currentSong: newQueue[clampedIndex] || null,
+    const clamped = Math.min(Math.max(0, startIndex), Math.max(0, newQueue.length - 1));
+    // Clear smart local pool — this is a full queue replacement
+    _playlistPool = [];
+    _isFetchingSmartLocal = false;
+    set({
+      queue: newQueue,
+      currentIndex: clamped,
+      currentSong: newQueue[clamped] || null,
+      shuffleMode: 'none',
+      originalQueue: [],
       isPlaying: false,
-      position: 0
+      position: 0,
     });
   },
 
   reorderQueue: (oldIndex, newIndex) => {
     set((state) => {
       const newQueue = [...state.queue];
-      const [movedItem] = newQueue.splice(oldIndex, 1);
-      newQueue.splice(newIndex, 0, movedItem);
-      
-      // Update currentIndex if necessary to keep current song playing
+      const [moved] = newQueue.splice(oldIndex, 1);
+      newQueue.splice(newIndex, 0, moved);
+
       let newCurrentIndex = state.currentIndex;
-      if (oldIndex === state.currentIndex) {
-        newCurrentIndex = newIndex;
-      } else if (oldIndex < state.currentIndex && newIndex >= state.currentIndex) {
-        newCurrentIndex--;
-      } else if (oldIndex > state.currentIndex && newIndex <= state.currentIndex) {
-        newCurrentIndex++;
-      }
+      if (oldIndex === state.currentIndex) newCurrentIndex = newIndex;
+      else if (oldIndex < state.currentIndex && newIndex >= state.currentIndex) newCurrentIndex--;
+      else if (oldIndex > state.currentIndex && newIndex <= state.currentIndex) newCurrentIndex++;
 
       return { queue: newQueue, currentIndex: newCurrentIndex };
     });
   },
 
   addToQueue: (song) => {
-    set((state) => ({ 
+    set((state) => ({
       queue: [...state.queue, song],
-      currentSong: state.currentSong || song
+      currentSong: state.currentSong || song,
     }));
   },
 
+  // ── Shuffle ────────────────────────────────────────────────────────────────
+
+  /**
+   * S1/C1/C2/C3/S5/S6 — Smart Local 15-song initial load.
+   * • Uses _shuffleLock to prevent concurrent calls (S5).
+   * • Sets shufflePending=true while AI fetch is in flight (C3).
+   * • Defaults pool to originalQueue, falls back to current queue (S6).
+   * • Calls _loadAndPlay after set() to replace AudioEngine's active track (S1).
+   * • Preloads queue[1] in _loadAndPlay (C2).
+   */
   enableSmartShuffle: async (songs, options = {}) => {
-    const { affinityData, playlistName } = options;
-    const affinityDataSafe = affinityData || useAffinityStore.getState();
-    const state = get();
-    const currentQueue = state.queue;
-    const currentSong = state.currentSong;
-    
-    // Save original queue before shuffling
-    const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
-    const pool = songs || originalQueue;
+    if (_shuffleLock) {
+      console.log('[SmartShuffle] Already in progress — rejecting concurrent call');
+      return;
+    }
+    _shuffleLock = true;
+    set({ shufflePending: true });
 
-    const maxQueue = 500;
-    const localFallback = () => applyShuffleAlgorithm(pool, affinityDataSafe, {
-      maxQueue,
-      avoidRecent: true,
-      seedSong: currentSong
-    });
+    try {
+      const { affinityData, playlistName } = options;
+      const affinityDataSafe = affinityData || useAffinityStore.getState();
+      const state = get();
+      const currentSong = state.currentSong;
 
-    let shuffled  = null;
-    let queueSource = 'local';
+      // S6: use originalQueue as pool when available — never the already-shuffled queue
+      const pool = songs
+        || (state.originalQueue.length > 0 ? state.originalQueue : state.queue);
 
-    // ── Priority 1: AI shuffle server ─────────────────────────────────────
-    const aiStore = useAIShuffleStore.getState();
-    if (aiStore.isConfigured && aiStore.isHealthy) {
-      try {
-        await aiStore.fetchNext({
-          current:  currentSong?.title || '',
-          artist:   currentSong?.artist || '',
-          playlist: playlistName || '',
-          count:    10,
-        });
-        const freshStore = useAIShuffleStore.getState();
-        const mapped = mapRecommendationsToSongs(freshStore.recommendedQueue, pool);
+      // Save original queue before first shuffle only
+      const originalQueue = state.shuffleMode === 'none' ? [...state.queue] : state.originalQueue;
 
-        if (mapped.length >= 3) {
-          const usedIds = new Set(mapped.map((s) => s.id));
-          const seedSong = currentSong && pool.find((s) => s.id === currentSong.id) ? currentSong : null;
+      // 1. Pick seed — ALWAYS random from pool for a genuinely different queue.
+      //    The current song is already playing and would just restart; the user
+      //    wants variety when they press smart shuffle.
+      const seedSong = pool[Math.floor(Math.random() * pool.length)];
 
-          const result = [];
-          if (seedSong) { result.push(seedSong); usedIds.add(seedSong.id); }
-          mapped.forEach((song) => { if (!usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); } });
+      console.log(`[SmartShuffle] Seed selected: "${seedSong?.title}" (current was: "${currentSong?.title}")`);
 
-          const remainingPool = pool.filter((s) => !usedIds.has(s.id));
-          const filler = applyShuffleAlgorithm(remainingPool, affinityDataSafe, {
-            maxQueue: Math.max(0, maxQueue - result.length),
-            avoidRecent: true,
-            seedSong: null
-          });
+      // Remember what was playing BEFORE we mutate the store
+      const playingSongId = currentSong?.id ?? null;
 
-          shuffled    = [...result, ...filler].slice(0, maxQueue);
-          queueSource = freshStore.queueSource || 'model';
-        }
-      } catch {
-        // Server unreachable — fall through to local
+      // 2. Init pool: all songs except seed, Fisher-Yates shuffled
+      const poolWithoutSeed = pool.filter((s) => s.id !== seedSong?.id);
+      for (let i = poolWithoutSeed.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [poolWithoutSeed[i], poolWithoutSeed[j]] = [poolWithoutSeed[j], poolWithoutSeed[i]];
       }
-    }
+      _playlistPool = poolWithoutSeed;
 
-    // ── Priority 2: local applyShuffleAlgorithm (always available) ────────
-    if (!shuffled || shuffled.length === 0) {
-      shuffled    = localFallback();
-      queueSource = 'local';
-    }
+      // 3. Take first batch (up to 15)
+      const firstBatch = _playlistPool.splice(0, SMART_LOCAL_BATCH);
 
-    set({
-      shuffleMode: 'smart',
-      isShuffled: true,
-      originalQueue,
-      queue: shuffled,
-      queueSource,
-      currentIndex: 0,
-      currentSong: shuffled[0] || null
-    });
+      let ordered = null;
+      let queueSource = 'local';
+
+      // 4. Ask AI server to order the batch relative to seed
+      const aiStore = useAIShuffleStore.getState();
+      if (aiStore.isConfigured && aiStore.isHealthy && seedSong) {
+        try {
+          console.log(`[SmartShuffle] → Sending /next request | seed: "${seedSong.title}" | count: ${SMART_LOCAL_BATCH}`);
+          await aiStore.fetchNext({
+            current:  seedSong.title  || '',
+            artist:   seedSong.artist || '',
+            playlist: playlistName    || '',
+            count:    SMART_LOCAL_BATCH,
+          });
+          const freshAi = useAIShuffleStore.getState();
+          const mapped = mapRecommendationsToSongs(freshAi.recommendedQueue, firstBatch);
+          if (mapped.length >= 3) {
+            ordered = mapped;
+            queueSource = freshAi.queueSource || 'model';
+            console.log(`[SmartShuffle] ✓ AI returned ${mapped.length} ordered songs (source: ${queueSource})`);
+          } else {
+            console.warn(`[SmartShuffle] AI mapping produced only ${mapped.length} songs — falling back to local`);
+          }
+        } catch (e) {
+          console.warn('[SmartShuffle] AI /next request failed — falling back to local:', e.message);
+        }
+      } else {
+        console.log('[SmartShuffle] AI not available — using local affinity shuffle');
+      }
+
+      // 5. Fallback: local affinity-based ordering of the batch
+      if (!ordered || ordered.length === 0) {
+        ordered = applyShuffleAlgorithm(firstBatch, affinityDataSafe, {
+          maxQueue: SMART_LOCAL_BATCH,
+          avoidRecent: true,
+          seedSong,
+        });
+        queueSource = 'local';
+      }
+
+      // 6. Build initial queue: [seed, ...ordered batch]
+      // Deduplicate: remove seed from ordered in case AI returned it as a recommendation
+      const orderedDeduped = seedSong
+        ? ordered.filter((s) => s.id !== seedSong.id)
+        : ordered;
+      const initialQueue = seedSong ? [seedSong, ...orderedDeduped] : orderedDeduped;
+
+      // 7. Drain pool of anything already in initial queue
+      const queuedIds = new Set(initialQueue.map((s) => s.id));
+      _playlistPool = _playlistPool.filter((s) => !queuedIds.has(s.id));
+
+
+      // 8. Commit to store
+      set({
+        shuffleMode: 'smart',
+        originalQueue,
+        queue: initialQueue,
+        queueSource,
+        currentIndex: 0,
+        currentSong: initialQueue[0] || null,
+      });
+
+      // 9. S1/C2: Load into AudioEngine — but ONLY if seed differs from currently-playing song.
+      //    If seed === playing song, it's already running; just preload queue[1] silently.
+      if (initialQueue[0]?.id !== playingSongId) {
+        console.log(`[SmartShuffle] Seed is different from current song — loading into AudioEngine`);
+        _loadAndPlay(initialQueue[0], get(), initialQueue[1] || null);
+      } else {
+        console.log(`[SmartShuffle] Seed matches current song — keeping playback, preloading next only`);
+        const { audioEngine, subsonicClient } = get();
+        if (audioEngine && subsonicClient && initialQueue[1]) {
+          audioEngine.preloadNext(initialQueue[1], subsonicClient.stream(initialQueue[1].id));
+          console.log(`[SmartShuffle] Preloaded next: "${initialQueue[1].title}"`);
+        }
+      }
+
+
+      console.log(`[SmartShuffle] ✓ Queue ready — ${initialQueue.length} songs (pool: ${_playlistPool.length} remaining)`);
+    } catch (e) {
+      console.error('[SmartShuffle] enableSmartShuffle failed:', e);
+    } finally {
+      _shuffleLock = false;
+      set({ shufflePending: false });
+    }
   },
 
+  /**
+   * S2/S4/C1 — Dumb (Fisher-Yates) shuffle.
+   * • Keeps current song at index 0 — NO audioEngine.load() call (C1 correction).
+   * • Clears _playlistPool (S4).
+   * • Uses originalQueue as base when available.
+   */
   enableDumbShuffle: () => {
     const state = get();
-    const currentQueue = state.queue;
     const currentSong = state.currentSong;
-    
-    if (currentQueue.length <= 1) return;
 
-    const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
+    // S6: always shuffle from the original unshuffled order
+    const base = state.originalQueue.length > 0 ? state.originalQueue : state.queue;
+    if (base.length <= 1) return;
 
-    // Standard Fisher-Yates, but keep currentSong at index 0
-    let pool = [...currentQueue];
-    if (currentSong) {
-      pool = pool.filter(s => s.id !== currentSong.id);
-    }
+    const originalQueue = state.shuffleMode === 'none' ? [...state.queue] : state.originalQueue;
 
-    for (let i = pool.length - 1; i > 0; i--) {
+    // Fisher-Yates on songs other than current
+    const rest = base.filter((s) => s.id !== currentSong?.id);
+    for (let i = rest.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+      [rest[i], rest[j]] = [rest[j], rest[i]];
     }
 
-    const newQueue = currentSong ? [currentSong, ...pool] : pool;
+    const newQueue = currentSong ? [currentSong, ...rest].filter(Boolean) : rest;
 
+    // S4: clear pool — dumb shuffle is not a smart-local session
+    _playlistPool = [];
+    _isFetchingSmartLocal = false;
+
+    // C1: DO NOT call _loadAndPlay — current song keeps playing uninterrupted
     set({
       shuffleMode: 'dumb',
-      isShuffled: true,
       originalQueue,
       queue: newQueue,
-      currentIndex: 0
+      currentIndex: 0,
     });
+
+    console.log(`[DumbShuffle] Queue shuffled — ${newQueue.length} songs, current song stays playing`);
   },
 
+  /**
+   * S3/S4 — Restore original unshuffled order.
+   * • Does NOT call audioEngine.load() — current song keeps playing (S3).
+   * • Clears _playlistPool and _isFetchingSmartLocal (S4).
+   */
   disableShuffle: () => {
     const state = get();
     if (state.shuffleMode === 'none') return;
 
+    // S4: clear smart local pool
+    _playlistPool = [];
+    _isFetchingSmartLocal = false;
+    _shuffleLock = false; // safety reset
+
     const restoredQueue = [...state.originalQueue];
-    let newIndex = 0;
-    
-    if (state.currentSong) {
-      const foundIdx = restoredQueue.findIndex(s => s.id === state.currentSong.id);
-      if (foundIdx >= 0) newIndex = foundIdx;
+    if (restoredQueue.length === 0) {
+      // No original to restore — just reset mode
+      set({ shuffleMode: 'none', originalQueue: [] });
+      return;
     }
 
+    // Find current song's position in the restored queue
+    let newIndex = 0;
+    if (state.currentSong) {
+      const found = restoredQueue.findIndex((s) => s.id === state.currentSong.id);
+      if (found >= 0) newIndex = found;
+    }
+
+    // S3: no audioEngine.load() — song keeps playing, only queue/index changes
     set({
       shuffleMode: 'none',
-      isShuffled: false,
       queue: restoredQueue,
-      originalQueue: [], // clear original queue
-      currentIndex: newIndex
+      originalQueue: [],
+      currentIndex: newIndex,
     });
+
+    console.log(`[Shuffle] Disabled — restored ${restoredQueue.length}-song queue, index: ${newIndex}`);
   },
 
-  setShuffle: (enabled) => set({ shuffleEnabled: enabled }), // Legacy
+  // ── Misc ───────────────────────────────────────────────────────────────────
   setRepeatMode: (mode) => set({ repeatMode: mode }),
   setPosition: (position) => set({ position }),
   setDuration: (duration) => set({ duration }),
 }));
 
-// BUG 5 Fix: Debounced write to localStorage
-let persistTimer = null;
-usePlayerStore.subscribe((state, prevState) => {
-  // We manually implement subscribe by checking changes, 
-  // since subscribeWithSelector isn't default in Zustand 4+
-  // Wait, in Zustand without subscribeWithSelector, the listener receives (state, prevState)
-  const isChanged = prevState && (
-    state.queue !== prevState.queue ||
-    state.currentIndex !== prevState.currentIndex ||
-    state.currentSong?.id !== prevState.currentSong?.id ||
-    state.volume !== prevState.volume ||
-    state.shuffleEnabled !== prevState.shuffleEnabled ||
-    state.repeatMode !== prevState.repeatMode
+// ── Debounced localStorage persistence (v2) ──────────────────────────────────
+let _persistTimer = null;
+
+const sanitizeSong = (song) => {
+  if (!song) return null;
+  return {
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    artistId: song.artistId,
+    album: song.album,
+    coverArt: song.coverArt,
+    duration: song.duration,
+    year: song.year,
+    genre: song.genre,
+  };
+};
+
+usePlayerStore.subscribe((state, prev) => {
+  const changed = !prev || (
+    state.queue !== prev.queue ||
+    state.currentIndex !== prev.currentIndex ||
+    state.currentSong?.id !== prev.currentSong?.id ||
+    state.volume !== prev.volume ||
+    state.repeatMode !== prev.repeatMode ||
+    state.shuffleMode !== prev.shuffleMode
   );
 
-  if (!prevState || isChanged) {
-    if (persistTimer) clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => {
-      const sanitizeSong = (song) => {
-        if (!song) return null;
-        return {
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          artistId: song.artistId,
-          album: song.album,
-          coverArt: song.coverArt,
-          duration: song.duration,
-          year: song.year,
-          genre: song.genre
-        };
-      };
-
-      const persistData = {
-        queue: Array.isArray(state.queue) ? state.queue.map(sanitizeSong) : [],
+  if (!changed) return;
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(PERSIST_KEY, JSON.stringify({
+        __version: PERSIST_VERSION,
+        queue: state.queue.map(sanitizeSong),
         currentIndex: state.currentIndex,
         currentSong: sanitizeSong(state.currentSong),
         volume: state.volume,
-        shuffleEnabled: state.shuffleEnabled,
-        shuffleMode: state.shuffleMode,
-        isShuffled: state.isShuffled,
-        originalQueue: Array.isArray(state.originalQueue) ? state.originalQueue.map(sanitizeSong) : [],
+        shuffleMode: 'none',       // always reset on reload — don't restore mid-shuffle
+        originalQueue: [],          // same — reset to avoid stale pool context
         repeatMode: state.repeatMode,
-        gainValue: state.gainValue
-      };
-      localStorage.setItem('navivibe-player-queue', JSON.stringify(persistData));
-    }, 5000);
-  }
+        gainValue: state.gainValue,
+      }));
+    } catch (e) {
+      console.error('[playerStore] Persist failed:', e);
+    }
+  }, 5000);
 });

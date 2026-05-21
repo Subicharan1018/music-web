@@ -104,9 +104,11 @@ export const usePlayer = () => {
   const setRepeatMode = useCallback((m) => store.setRepeatMode(m), [store]);
 
   const enableSmartShuffle = useCallback(async (songs, options = {}) => {
+    // S6: when called with no songs arg, store resolves to originalQueue
     await store.enableSmartShuffle(songs, { ...options, affinityData });
     setAffinityRefresh(prev => prev + 1);
   }, [store, affinityData]);
+
 
   const enableDumbShuffle = useCallback(() => store.enableDumbShuffle(), [store]);
   const disableShuffle = useCallback(() => store.disableShuffle(), [store]);
@@ -119,10 +121,10 @@ export const usePlayer = () => {
     position: store.position,
     duration: store.duration,
     volume: store.volume,
-    shuffleEnabled: store.shuffleEnabled,
     shuffleMode: store.shuffleMode,
+    shufflePending: store.shufflePending,   // C3: drives loading UI on AI✦ button
     repeatMode: store.repeatMode,
-    
+
     play,
     pause,
     next,
@@ -131,10 +133,10 @@ export const usePlayer = () => {
     setVolume,
     setQueue,
     addToQueue,
-    setShuffle,
     setRepeatMode,
     enableSmartShuffle,
     enableDumbShuffle,
     disableShuffle,
   };
+
 };

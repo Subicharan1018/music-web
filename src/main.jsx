@@ -6,6 +6,17 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import './lib/gsap';
 import './index.css';
 
+// ── Listening telemetry singleton — init once, subscribe to URL changes ──────
+import * as ListeningLog from './services/listeningLog';
+import { useSettingsStore } from './store/settingsStore';
+
+ListeningLog.init(useSettingsStore.getState().localShuffleUrl);
+useSettingsStore.subscribe(
+  (s) => s.localShuffleUrl,
+  (url) => ListeningLog.init(url),
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');
 

@@ -8,10 +8,12 @@ export const AIShuffleButton = ({ className = "" }) => {
   const {
     queue,
     shuffleMode,
+    shufflePending,
     enableSmartShuffle,
     enableDumbShuffle,
     disableShuffle
   } = usePlayer();
+
 
   const { addToast } = useUIStore();
   const { isHealthy, isConfigured } = useServerHealth();
@@ -19,17 +21,19 @@ export const AIShuffleButton = ({ className = "" }) => {
   const glowRef = useRef(null);
 
   const cycleShuffle = async () => {
+    if (shufflePending) return; // C3: reject while AI fetch in flight
     if (shuffleMode === 'none') {
       enableDumbShuffle();
-      addToast("Standard Shuffle Enabled", "info");
+      addToast('Standard Shuffle Enabled', 'info');
     } else if (shuffleMode === 'dumb') {
-      await enableSmartShuffle(queue);
-      addToast("AI Smart Shuffle Active", "success");
+      await enableSmartShuffle(); // S6: no queue arg — store uses originalQueue
+      addToast('AI Smart Shuffle Active', 'success');
     } else {
       disableShuffle();
-      addToast("Shuffle Disabled", "info");
+      addToast('Shuffle Disabled', 'info');
     }
   };
+
 
   useEffect(() => {
     const ctx = gsap.context(() => {

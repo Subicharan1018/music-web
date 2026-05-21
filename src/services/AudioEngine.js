@@ -38,9 +38,9 @@ class AudioEngine {
   _calculateVolume(song) {
     if (!song) return this.volume;
     const multiplier = ReplayGainService.calculateVolumeMultiplier(
-      song, 
-      this.replayGainMode, 
-      this.replayGainPreamp, 
+      song,
+      this.replayGainMode,
+      this.replayGainPreamp,
       this.preventClipping
     );
     return this.volume * multiplier;
@@ -55,19 +55,19 @@ class AudioEngine {
     // RC-01: Capture generation for this load. Any Howl callback that sees
     // a different generation is a stale listener and must be ignored.
     const gen = ++this._generation;
-    
+
     // If we already preloaded this exact song, swap it in
     if (this.preloadedHowl && this.preloadedSong?.id === song.id) {
       this.activeHowl = this.preloadedHowl;
       this.activeSong = this.preloadedSong;
-      
+
       this.preloadedHowl = null;
       this.preloadedSong = null;
-      
+
       // Update handlers for the now-active howl
       this._attachActiveHandlers(this.activeHowl, song, gen);
       this.activeHowl.volume(this._calculateVolume(song));
-      
+
       if (autoplay) {
         this.activeHowl.play();
       }
@@ -82,6 +82,10 @@ class AudioEngine {
       format: ['mp3', 'aac', 'flac', 'ogg', 'opus', 'm4a'],
       volume: this._calculateVolume(song),
       autoplay: autoplay,
+      // BUG-3 fix: unlock autoplay-blocked audio on first user gesture
+      onplayerror: (_id, _err) => {
+        this.activeHowl?.once('unlock', () => this.activeHowl?.play());
+      },
     });
 
     this._attachActiveHandlers(this.activeHowl, song, gen);
@@ -172,17 +176,16 @@ class AudioEngine {
     this.replayGainMode = mode;
     this.replayGainPreamp = preamp;
     this.preventClipping = preventClipping;
-    
+
     if (this.activeHowl) {
       this.activeHowl.volume(this._calculateVolume(currentSong));
     }
   }
 
   getCurrentPosition() {
-    if (this.activeHowl && this.activeHowl.playing()) {
-      return this.activeHowl.seek() || 0;
-    }
-    return 0;
+    // Fix: seek() returns current position regardless of playing state;
+    // previously returned 0 when paused, losing scrubber position.
+    return this.activeHowl?.seek() ?? 0;
   }
 
   getDuration() {

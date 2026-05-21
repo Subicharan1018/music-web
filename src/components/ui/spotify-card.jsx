@@ -18,13 +18,14 @@ export const SpotifyCard = () => {
     next,
     prev,
     shuffleMode,
+    shufflePending,
     enableSmartShuffle,
     enableDumbShuffle,
     disableShuffle,
     repeatMode,
     setRepeatMode,
-    queue
   } = usePlayer();
+
 
   const { toggleStarSong, isSongStarred } = useLibraryStore();
   const isStarred = currentSong ? isSongStarred(currentSong.id) : false;
@@ -32,10 +33,12 @@ export const SpotifyCard = () => {
   const coverUrl = currentSong?.coverArt && client ? client.getCoverArtUrl(currentSong.coverArt, 600) : FALLBACK_COVER;
 
   const toggleShuffle = () => {
+    if (shufflePending) return; // C3: reject while AI fetch in flight
     if (shuffleMode === 'none') enableDumbShuffle();
-    else if (shuffleMode === 'dumb') void enableSmartShuffle(queue);
+    else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
     else disableShuffle();
   };
+
 
   const cycleLoop = () => {
     if (repeatMode === 'none') setRepeatMode('all');
