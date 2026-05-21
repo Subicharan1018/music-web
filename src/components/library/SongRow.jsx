@@ -80,7 +80,7 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
         ref={setNodeRef}
         style={style}
         className={`reveal-item group flex items-center gap-3 py-2 px-2 -mx-2 rounded cursor-default ${
-          isCurrent ? 'bg-paper-warm' : 'hover:bg-ink/5 transition-colors'
+          isCurrent ? 'bg-paper-raised' : 'hover:bg-white/[0.03] transition-colors'
         } ${isDragging ? 'shadow-md bg-paper' : ''}`}
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
@@ -160,14 +160,17 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
             </button>
 
             {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-paper border border-ink/16 rounded-md shadow-lg py-1 z-20">
-                <button 
+              <div
+                className="absolute right-0 top-full mt-1 w-48 rounded-lg py-1 z-20"
+                style={{ background: 'rgba(10,10,10,0.97)', border: '1px solid rgba(220,20,60,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.8)' }}
+              >
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsMenuOpen(false);
                     setShowAddDialog(true);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm font-sans text-ink hover:bg-paper-warm flex items-center gap-2 transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm font-sans text-ink/70 hover:text-ink hover:bg-white/[0.04] flex items-center gap-2 transition-colors"
                 >
                   <Plus size={14} />
                   Add to Playlist

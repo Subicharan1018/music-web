@@ -1,32 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #000000;
-  --color-paper-warm: #0a0a0a;
-  --color-paper-dark: #141414;
-  --color-paper-bone: #1f1f1f;
+  /* ── OBSIDIAN BLACK BASE ─────────────────────────────────────────────── */
+  --color-paper: #050505;
+  --color-paper-warm: #0c0c0c;
+  --color-paper-dark: #000000;
+  --color-paper-bone: #111111;
+  --color-paper-raised: #181818;
 
-  --color-ink: #ffffff;
-  --color-ink-soft: #e5e5e5;
-  --color-ink-mute: #a3a3a3;
-  --color-ink-faint: #737373;
+  /* ── INK (TEXT) SCALE ────────────────────────────────────────────────── */
+  --color-ink: #f0f0f0;
+  --color-ink-soft: #d4d4d4;
+  --color-ink-mute: #888888;
+  --color-ink-faint: #555555;
 
+  /* ── CRIMSON PRIMARY ─────────────────────────────────────────────────── */
   --color-coral: #dc143c;
-  --color-coral-soft: #e34262;
+  --color-coral-soft: #e8294d;
+  --color-coral-dim: #8a0c24;
+  --color-coral-glow: rgba(220, 20, 60, 0.35);
 
-  --color-mustard: #ff8c00;
-  --color-olive: #b36200;
-  
+  /* ── ORANGE SECONDARY ────────────────────────────────────────────────── */
+  --color-mustard: #ff6b00;
+  --color-olive: #c25200;
+
+  /* ── DYNAMIC ACCENT (palette extracted) ─────────────────────────────── */
   --color-accent: var(--accent);
 
-  --font-serif: 'Playfair Display', 'Times New Roman', serif;
-  --font-sans: 'Inter Tight', 'Inter', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+  /* ── TYPOGRAPHY ──────────────────────────────────────────────────────── */
+  --font-display: 'Bebas Neue', 'Impact', sans-serif;
+  --font-serif: 'Crimson Pro', 'Georgia', serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
 }
 
 :root {
-  --accent: #ed6f5c; /* Default to coral fallback */
+  --accent: #dc143c;
 }
 
 @layer base {
@@ -47,16 +57,16 @@
     overflow: hidden;
   }
 
-  /* Atelier Zero Paper Texture Overlay */
+  /* ── Scanline / grain texture overlay ─────────────────────────────── */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 200px 200px;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
   }
 }
 
@@ -73,114 +83,88 @@
     scroll-behavior: smooth;
   }
 
+  /* ── Shimmer for skeleton loaders ─────────────────────────────────── */
   @keyframes shimmer {
-    0% {
-      background-position: 200% 0;
-    }
-    100% {
-      background-position: -200% 0;
-    }
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
   }
 
-  .dark-override {
-    background-color: var(--color-ink) !important;
-    color: var(--color-paper) !important;
-  }
-
-  /* ── Playlist page: full dark mode ───────────────────────────────────────── */
+  /* ── Playlist page dark mode overrides ─────────────────────────────── */
   body.playlist-page-active {
-    background: #080808 !important;
+    background: #020202 !important;
   }
 
-  /* #root stays a plain positioned box — no isolation, no z-index */
   #root {
     position: relative;
   }
 
-  /* AppShell + root background transparent so fixed bg layers show through */
   body.playlist-page-active #root,
   body.playlist-page-active .app-shell {
     background: transparent !important;
   }
 
-  /*
-   * NOTE: Do NOT add position/z-index overrides for .app-shell > * here.
-   * PlaylistBackground divs are position:fixed at z-index:0 — they naturally
-   * sit behind all in-flow grid content. Forcing position:relative on grid
-   * children was breaking TopBar (fixed), SideRail (fixed), and the layout.
-   */
-
-  /* Sidebar <aside> — dark glass on playlist pages (not QueuePanel which is .fixed) */
   body.playlist-page-active .app-shell aside:not(.fixed) {
-    background: rgba(5, 5, 8, 0.60) !important;
+    background: rgba(3, 3, 3, 0.70) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-right: 1px solid rgba(220, 20, 60, 0.08) !important;
   }
 
-  /* Sidebar text goes light */
   body.playlist-page-active .app-shell aside:not(.fixed) * {
-    color: rgba(255, 255, 255, 0.75) !important;
+    color: rgba(240, 240, 240, 0.75) !important;
   }
 
-  /* Active nav link stays coral */
   body.playlist-page-active .app-shell aside:not(.fixed) a[aria-current="page"] {
-    color: var(--color-coral, #ed6f5c) !important;
+    color: var(--color-coral, #dc143c) !important;
   }
 
-  /* Main content area transparent so bg bleeds through */
   body.playlist-page-active .main-content,
   body.playlist-page-active main {
     background: transparent !important;
   }
 
-  /* TopBar goes dark on playlist pages */
   body.playlist-page-active .app-shell > div.fixed.top-0 {
-    background: rgba(5, 5, 8, 0.75) !important;
+    background: rgba(3, 3, 3, 0.85) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
-    color: rgba(255, 255, 255, 0.7) !important;
+    border-bottom-color: rgba(220, 20, 60, 0.08) !important;
+    color: rgba(240, 240, 240, 0.7) !important;
   }
 
-  /* TopBar text all white on playlist pages */
   body.playlist-page-active .app-shell > div.fixed.top-0 * {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: rgba(240, 240, 240, 0.7) !important;
   }
 
-  /* SideRail labels go light */
   body.playlist-page-active [class*="side-rail"],
   body.playlist-page-active [class*="sideRail"] {
-    color: rgba(255, 255, 255, 0.2) !important;
+    color: rgba(240, 240, 240, 0.15) !important;
   }
 
-  /* PlayerBar — keep dark glass regardless */
   body.playlist-page-active footer[style] {
     z-index: 100 !important;
   }
 
-  /* QueuePanel — dark glass on playlist pages */
   body.playlist-page-active aside.fixed.right-0 {
-    background: rgba(8, 8, 12, 0.92) !important;
+    background: rgba(5, 5, 5, 0.95) !important;
     backdrop-filter: blur(28px) !important;
     -webkit-backdrop-filter: blur(28px) !important;
-    border-left-color: rgba(255, 255, 255, 0.08) !important;
+    border-left-color: rgba(220, 20, 60, 0.10) !important;
   }
 
-  /* QueuePanel text colors */
   body.playlist-page-active aside.fixed.right-0 * {
-    color: rgba(255, 255, 255, 0.75) !important;
+    color: rgba(240, 240, 240, 0.75) !important;
   }
 
   body.playlist-page-active aside.fixed.right-0 h2 {
-    color: rgba(255, 255, 255, 0.95) !important;
+    color: rgba(240, 240, 240, 0.95) !important;
   }
 }
 
+/* ── EQ Animations ────────────────────────────────────────────────────── */
 @keyframes eq1 {
   0%, 100% { height: 50%; }
   50% { height: 100%; }
@@ -194,72 +178,46 @@
   50% { height: 80%; }
 }
 
-/* Music player / demo keyframes added for widgets */
+/* ── Album art transition keyframes ──────────────────────────────────── */
 @keyframes cover-in {
-  from {
-    opacity: 0;
-    transform: scale(1.08);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(1.08); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes cover-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.9);
-  }
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.9); }
 }
 
 @keyframes ti-in {
-  from {
-    opacity: 0;
-    transform: translateX(var(--dx));
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(var(--dx)); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes ti-out {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(var(--dx));
-  }
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(var(--dx)); }
 }
 
+/* ── Blob drift (playlist bg) ────────────────────────────────────────── */
 @keyframes blob-drift-a {
-  0% { transform: translate(-6%, -4%) scale(1); }
+  0%   { transform: translate(-6%, -4%) scale(1); }
   100% { transform: translate(6%, 4%) scale(1.08); }
 }
-
 @keyframes blob-drift-b {
-  0% { transform: translate(8%, -6%) scale(1.02); }
+  0%   { transform: translate(8%, -6%) scale(1.02); }
   100% { transform: translate(-6%, 6%) scale(1); }
 }
-
 @keyframes blob-drift-c {
-  0% { transform: translate(-4%, 8%) scale(1.04); }
+  0%   { transform: translate(-4%, 8%) scale(1.04); }
   100% { transform: translate(6%, -4%) scale(0.98); }
 }
-
 @keyframes blob-drift-d {
-  0% { transform: translate(6%, 6%) scale(1); }
+  0%   { transform: translate(6%, 6%) scale(1); }
   100% { transform: translate(-6%, -6%) scale(1.06); }
 }
 
-/* Vinyl ring rotation — used by NowPlayingOverlay album art */
+/* ── Vinyl rotation ──────────────────────────────────────────────────── */
 @keyframes vinyl-rotate {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
@@ -268,20 +226,23 @@
 .vinyl-spin {
   animation: vinyl-rotate 20s linear infinite;
 }
-
 .vinyl-spin.paused {
   animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vinyl-spin {
-    animation: none;
-  }
+  .vinyl-spin { animation: none; }
 }
 
-/* tw-animate-css import removed — not installed in this environment. */
+/* ── Pulse glow for live indicators ──────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,20,60,0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(220,20,60,0); }
+}
 
-/* MusicPlayer Widget Styles */
+/* ───────────────────────────────────────────────────────────────────────
+   MUSIC PLAYER WIDGET STYLES
+   ─────────────────────────────────────────────────────────────────────── */
 .card {
   display: flex;
   align-items: center;
@@ -310,8 +271,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: rgba(21, 20, 15, 0.7);
-  color: var(--color-paper);
+  background: rgba(5, 5, 5, 0.7);
+  color: var(--color-ink);
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -326,9 +287,8 @@
 .track-info.is-clickable {
   cursor: pointer;
 }
-
 .track-info.is-clickable:focus-visible {
-  outline: 2px solid var(--color-paper);
+  outline: 2px solid var(--color-coral);
   outline-offset: 4px;
 }
 
@@ -338,7 +298,7 @@
   position: absolute;
   bottom: 80px;
   left: 32px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px -5px rgba(220,20,60,0.25), 0 10px 10px -5px rgba(0,0,0,0.4);
   z-index: 100;
 }
 
@@ -356,13 +316,8 @@
   object-fit: cover;
 }
 
-.cover-enter {
-  animation: cover-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.cover-exit {
-  animation: cover-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
+.cover-enter { animation: cover-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.cover-exit  { animation: cover-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 
 .hole {
   position: absolute;
@@ -372,7 +327,7 @@
   height: 25%;
   background-color: var(--color-paper);
   border-radius: 9999px;
-  border: 1px solid rgba(21, 20, 15, 0.1);
+  border: 1px solid rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -381,23 +336,24 @@
 .hole-inner {
   width: 20%;
   height: 20%;
-  background-color: rgba(21, 20, 15, 0.2);
+  background-color: rgba(255,255,255,0.08);
   border-radius: 9999px;
 }
 
+/* Player widget info strip */
 .info {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 16px;
   min-width: 0;
-  background-color: rgba(239, 231, 210, 0.7);
+  background-color: rgba(15, 15, 15, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 8px 24px;
   border-radius: 16px;
-  border: 1px solid rgba(21, 20, 15, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(220, 20, 60, 0.12);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .track-info {
@@ -416,28 +372,22 @@
   justify-content: center;
 }
 
-.ti-abs {
-  pointer-events: none;
-}
+.ti-abs { pointer-events: none; }
 
-.ti-enter {
-  animation: ti-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.ti-exit {
-  animation: ti-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
+.ti-enter { animation: ti-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.ti-exit  { animation: ti-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 
 .artist {
-  font-size: 11px;
-  color: rgba(21, 20, 15, 0.6);
+  font-size: 10px;
+  color: rgba(240, 240, 240, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin: 0;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
+  font-family: var(--font-mono);
 }
 
 .track {
@@ -466,35 +416,34 @@
   border-radius: 9999px;
   border: none;
   background: transparent;
-  color: var(--color-ink);
+  color: rgba(240,240,240,0.6);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .ctrl:hover {
-  background-color: rgba(21, 20, 15, 0.05);
+  color: var(--color-coral);
+  background-color: rgba(220, 20, 60, 0.08);
 }
 
 .ctrl-play {
   width: 44px;
   height: 44px;
-  background-color: var(--color-coral);
+  background: linear-gradient(135deg, var(--color-coral) 0%, var(--color-mustard) 100%);
   color: #fff;
+  box-shadow: 0 0 20px rgba(220,20,60,0.4);
 }
 
 .ctrl-play:hover {
-  background-color: var(--color-coral-soft);
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 0 32px rgba(220,20,60,0.6);
 }
 
 .ctrl-toggle.is-active {
   color: var(--color-coral);
 }
 
-.ctrl-loop {
-  position: relative;
-}
-
+.ctrl-loop { position: relative; }
 .loop-one {
   font-size: 8px;
   font-weight: bold;
@@ -503,28 +452,22 @@
   left: 50%;
   transform: translate(-50%, -50%);
 }
+.ctrl-loop.mode-one .loop-one { display: block; }
+.ctrl-loop:not(.mode-one) .loop-one { display: none; }
 
-.ctrl-loop.mode-one .loop-one {
-  display: block;
-}
-
-.ctrl-loop:not(.mode-one) .loop-one {
-  display: none;
-}
-
+/* Progress bar */
 .bar {
   flex: 1;
-  height: 6px;
-  background-color: rgba(21, 20, 15, 0.1);
+  height: 3px;
+  background-color: rgba(255,255,255,0.08);
   border-radius: 9999px;
   overflow: hidden;
   cursor: pointer;
   position: relative;
+  transition: height 0.15s ease;
 }
-
-.bar:hover .bar-fill {
-  background-color: var(--color-coral-soft);
-}
+.bar:hover { height: 5px; }
+.bar:hover .bar-fill { background: linear-gradient(90deg, var(--color-coral), var(--color-mustard)); }
 
 .bar-fill {
   height: 100%;
@@ -533,8 +476,9 @@
 }
 
 .time {
-  font-size: 12px;
-  color: rgba(21, 20, 15, 0.6);
+  font-size: 11px;
+  color: rgba(240,240,240,0.35);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   display: flex;
   gap: 4px;

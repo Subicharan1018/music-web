@@ -1,14 +1,14 @@
 /**
  * SkeletonCard.jsx
- * Loading skeleton for album cards.
+ * Loading skeleton for album cards — black shimmer.
  */
 
 export const SkeletonCard = () => {
   return (
     <div className="flex flex-col gap-2 w-full">
-      <div className="aspect-square rounded-md overflow-hidden bg-gradient-to-r from-ink/5 via-ink/10 to-ink/5 bg-[length:200%_100%] animate-shimmer" />
-      <div className="h-4 w-3/4 rounded bg-gradient-to-r from-ink/5 via-ink/10 to-ink/5 bg-[length:200%_100%] animate-shimmer" />
-      <div className="h-3 w-1/2 rounded bg-gradient-to-r from-ink/5 via-ink/10 to-ink/5 bg-[length:200%_100%] animate-shimmer" />
+      <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-r from-white/[0.03] via-white/[0.06] to-white/[0.03] bg-[length:200%_100%] animate-shimmer" />
+      <div className="h-3.5 w-3/4 rounded bg-gradient-to-r from-white/[0.03] via-white/[0.06] to-white/[0.03] bg-[length:200%_100%] animate-shimmer" />
+      <div className="h-2.5 w-1/2 rounded bg-gradient-to-r from-white/[0.03] via-white/[0.06] to-white/[0.03] bg-[length:200%_100%] animate-shimmer" />
     </div>
   );
 };

@@ -2,8 +2,6 @@ import React, { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 
 // Routes on which the waveform should not render.
-// Playlist pages use the MusicPortfolio album-art background instead.
-// Settings and login are utilitarian/focused — no atmospheric distraction.
 const DISABLED_ROUTES = ['/playlist/', '/settings', '/login']
 
 const SonicWaveformCanvas = () => {
@@ -24,37 +22,43 @@ const SonicWaveformCanvas = () => {
     }
 
     const draw = () => {
-      ctx.fillStyle = 'rgba(239, 231, 210, 0.08)'
+      // Pure black fade — no warm tone
+      ctx.fillStyle = 'rgba(5, 5, 5, 0.10)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      const lineCount = 48
-      const segmentCount = 72
+      const lineCount = 52
+      const segmentCount = 80
       const height = canvas.height / 2
-      // UI.4: Reduced opacity 0.28→0.12 so the wave is atmospheric,
-      // not competing visually with album art and content.
-      const accent = 'rgba(237, 111, 92, '
 
       for (let i = 0; i < lineCount; i++) {
         ctx.beginPath()
         const progress = i / lineCount
         const colorIntensity = Math.sin(progress * Math.PI)
-        ctx.strokeStyle = `${accent}${colorIntensity * 0.12})`
-        ctx.lineWidth = 1.0
+
+        // Alternate between crimson and orange for depth
+        const isCrimson = i % 3 !== 2
+        const baseR = isCrimson ? 220 : 255
+        const baseG = isCrimson ? 20  : 107
+        const baseB = isCrimson ? 60  : 0
+        const alpha = colorIntensity * 0.10
+
+        ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha})`
+        ctx.lineWidth = 1.2
 
         for (let j = 0; j < segmentCount + 1; j++) {
           const x = (j / segmentCount) * canvas.width
           const distToMouse = Math.hypot(x - mouse.x, height - mouse.y)
-          const mouseEffect = Math.max(0, 1 - distToMouse / 420)
-          const noise = Math.sin(j * 0.1 + time + i * 0.2) * 14
-          const spike = Math.cos(j * 0.18 + time + i * 0.1) * Math.sin(j * 0.05 + time) * 36
-          const y = height + noise + spike * (1 + mouseEffect * 1.7)
+          const mouseEffect = Math.max(0, 1 - distToMouse / 380)
+          const noise = Math.sin(j * 0.09 + time + i * 0.18) * 16
+          const spike = Math.cos(j * 0.16 + time + i * 0.09) * Math.sin(j * 0.05 + time) * 42
+          const y = height + noise + spike * (1 + mouseEffect * 2.0)
           if (j === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
         ctx.stroke()
       }
 
-      time += 0.018
+      time += 0.016
       animationFrameId = requestAnimationFrame(draw)
     }
 
@@ -82,7 +86,6 @@ const SonicWaveformCanvas = () => {
 const SonicWaveformBackground = ({ className = '' }) => {
   const location = useLocation()
 
-  // UI.4: Suppress waveform on routes that have their own full-bleed backgrounds
   const isDisabled = DISABLED_ROUTES.some(route =>
     location.pathname.startsWith(route)
   )
@@ -92,7 +95,9 @@ const SonicWaveformBackground = ({ className = '' }) => {
   return (
     <div className={`pointer-events-none fixed inset-0 z-0 ${className}`} aria-hidden="true">
       <SonicWaveformCanvas />
-      <div className="absolute inset-0 bg-gradient-to-b from-paper/35 via-paper/10 to-paper/60" />
+      {/* Vignette: heavy black edges, lighter centre so waveform breathes */}
+      <div className="absolute inset-0 bg-radial-[ellipse_at_center] from-transparent via-paper/20 to-paper/80" />
+      <div className="absolute inset-0 bg-gradient-to-b from-paper/50 via-transparent to-paper/70" />
     </div>
   )
 }

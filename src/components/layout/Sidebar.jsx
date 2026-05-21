@@ -1,6 +1,6 @@
 /**
  * Sidebar.jsx
- * Premium Glassmorphic Sidebar
+ * Sharp editorial sidebar — black, crimson, zero fat.
  */
 
 import React from 'react';
@@ -15,10 +15,10 @@ const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
-      `flex items-center gap-4 py-3 mx-3 px-3 my-1 rounded-xl transition-all duration-300 ease-out group ${
-        isActive 
-          ? 'bg-gradient-to-r from-coral/20 to-transparent text-white font-semibold shadow-[inset_3px_0_0_#dc143c]'
-          : 'text-white/50 font-medium hover:bg-white/5 hover:text-white'
+      `relative flex items-center gap-3.5 py-2.5 mx-2 px-3 my-0.5 rounded-lg transition-all duration-200 group ${
+        isActive
+          ? 'bg-coral/10 text-white'
+          : 'text-white/35 hover:bg-white/[0.04] hover:text-white/75'
       }`
     }
     title={collapsed ? label : undefined}
@@ -26,19 +26,27 @@ const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
     {({ isActive }) => (
       collapsed ? (
         <div className="w-full flex justify-center relative">
-          <span className={`font-sans text-xs uppercase tracking-[0.2em] origin-center rotate-[-90deg] whitespace-nowrap inline-block w-6 h-16 flex items-center justify-center transition-colors ${isActive ? 'text-coral drop-shadow-[0_0_8px_rgba(220,20,60,0.8)]' : 'text-white/40 group-hover:text-white/80'}`}>
+          {/* Rotated label when collapsed */}
+          <span className={`font-mono text-[9px] uppercase tracking-[0.25em] origin-center rotate-[-90deg] whitespace-nowrap inline-block w-5 h-14 flex items-center justify-center transition-colors ${isActive ? 'text-coral' : 'text-white/30 group-hover:text-white/60'}`}>
             {label}
           </span>
           {badge !== undefined && (
-            <span className="absolute top-0 right-2 w-1.5 h-1.5 rounded-full bg-mustard shadow-[0_0_8px_rgba(255,140,0,0.8)]"></span>
+            <span className="absolute top-0.5 right-1.5 w-1 h-1 rounded-full bg-mustard"></span>
           )}
         </div>
       ) : (
         <>
-          <Icon size={18} className={`shrink-0 transition-colors ${isActive ? 'text-coral drop-shadow-[0_0_8px_rgba(220,20,60,0.8)]' : 'text-white/40 group-hover:text-white/80'}`} />
-          <span className="font-sans text-sm truncate flex-1 tracking-wide">{label}</span>
+          {/* Active accent bar */}
+          {isActive && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-coral rounded-full" />
+          )}
+          <Icon
+            size={16}
+            className={`shrink-0 transition-colors ${isActive ? 'text-coral' : 'text-white/30 group-hover:text-white/70'}`}
+          />
+          <span className="font-sans text-[13px] truncate flex-1 font-medium tracking-wide">{label}</span>
           {badge !== undefined && (
-            <span className="font-mono text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/70 shadow-inner mr-1">{badge}</span>
+            <span className="font-mono text-[10px] bg-white/[0.06] border border-white/[0.08] px-2 py-0.5 rounded-full text-white/40 mr-1">{badge}</span>
           )}
         </>
       )
@@ -47,11 +55,11 @@ const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
 );
 
 const NavSection = ({ title, collapsed, children }) => (
-  <div className="mb-6">
+  <div className="mb-4">
     {!collapsed && (
-      <h3 className="font-sans text-[10px] tracking-[0.25em] uppercase text-white/30 mb-2 px-6 font-semibold">
+      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/20 mb-2 px-5 pt-2">
         {title}
-      </h3>
+      </div>
     )}
     {children}
   </div>
@@ -70,58 +78,66 @@ export const Sidebar = () => {
 
   let displayHost = '';
   if (isConnected) {
-    try { displayHost = new URL(serverUrl).hostname; } 
+    try { displayHost = new URL(serverUrl).hostname; }
     catch { displayHost = serverUrl; }
   }
 
   return (
-    <aside 
-      className={`h-full bg-black/40 backdrop-blur-2xl border-r border-white/5 shadow-[8px_0_32px_rgba(0,0,0,0.5)] transition-all duration-300 z-40 flex flex-col ${
+    <aside
+      className={`h-full bg-paper/70 backdrop-blur-2xl border-r border-white/[0.04] shadow-[6px_0_24px_rgba(0,0,0,0.6)] transition-all duration-300 z-40 flex flex-col ${
         sidebarCollapsed ? 'sidebar-width-collapsed' : 'sidebar-width'
       }`}
+      style={{ borderRight: '1px solid rgba(220,20,60,0.07)' }}
     >
-      <div className="flex items-center h-14 px-5 mb-4 mt-2 shrink-0">
-        <button 
-          onClick={toggleSidebar} 
-          className="text-white/70 hover:text-coral hover:drop-shadow-[0_0_8px_rgba(220,20,60,0.8)] transition-all duration-300 flex-shrink-0"
+      {/* Header */}
+      <div className="flex items-center h-14 px-4 mb-2 mt-1 shrink-0">
+        <button
+          onClick={toggleSidebar}
+          className="text-white/30 hover:text-coral transition-colors duration-200 flex-shrink-0 p-1 rounded-md hover:bg-coral/5"
           title="Toggle Sidebar"
         >
-          <Menu size={22} />
+          <Menu size={18} />
         </button>
         {!sidebarCollapsed && (
-          <h1 className="ml-4 font-serif text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 drop-shadow-sm truncate">
-            NaviVibe
-          </h1>
+          <div className="ml-3 flex items-baseline gap-1.5">
+            <h1 className="font-display text-2xl tracking-widest text-white leading-none">
+              NAVI<span className="text-coral">VIBE</span>
+            </h1>
+          </div>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto no-scrollbar flex flex-col pt-2 relative">
+      {/* Thin crimson rule under header */}
+      <div className="mx-4 mb-3 h-px bg-gradient-to-r from-coral/30 via-coral/10 to-transparent" />
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto no-scrollbar flex flex-col pt-1 relative">
         <NavSection title="Collection" collapsed={sidebarCollapsed}>
-          <NavItem to="/search" icon={Search} label="Search" collapsed={sidebarCollapsed} />
-          <NavItem to="/library" icon={Library} label="Library" collapsed={sidebarCollapsed} />
-          <NavItem to="/albums" icon={Home} label="Albums" collapsed={sidebarCollapsed} />
-          <NavItem to="/artists" icon={Mic2} label="Artists" collapsed={sidebarCollapsed} />
+          <NavItem to="/search"    icon={Search}    label="Search"    collapsed={sidebarCollapsed} />
+          <NavItem to="/library"   icon={Library}   label="Library"   collapsed={sidebarCollapsed} />
+          <NavItem to="/albums"    icon={Home}      label="Albums"    collapsed={sidebarCollapsed} />
+          <NavItem to="/artists"   icon={Mic2}      label="Artists"   collapsed={sidebarCollapsed} />
           <NavItem to="/playlists" icon={ListMusic} label="Playlists" collapsed={sidebarCollapsed} badge={playlists?.length > 0 ? playlists.length : undefined} />
-          <NavItem to="/favorites" icon={Heart} label="Favorites" collapsed={sidebarCollapsed} />
+          <NavItem to="/favorites" icon={Heart}     label="Favorites" collapsed={sidebarCollapsed} />
         </NavSection>
-        
+
         <NavSection title="System" collapsed={sidebarCollapsed}>
-          <NavItem to="/stats" icon={BarChart2} label="Stats" collapsed={sidebarCollapsed} badge={streakBadge} />
-          <NavItem to="/settings" icon={Settings} label="Settings" collapsed={sidebarCollapsed} />
+          <NavItem to="/stats"    icon={BarChart2} label="Stats"    collapsed={sidebarCollapsed} badge={streakBadge} />
+          <NavItem to="/settings" icon={Settings}  label="Settings" collapsed={sidebarCollapsed} />
         </NavSection>
       </nav>
 
+      {/* Connection status footer */}
       {!sidebarCollapsed && (
-        <div className="shrink-0 sticky bottom-0 bg-gradient-to-t from-black/80 to-transparent border-t border-white/5 px-6 py-5 mt-auto backdrop-blur-md">
-          <div className="flex items-center gap-3" title={isConnected ? serverUrl : 'No server configured'}>
+        <div className="shrink-0 border-t px-5 py-4 mt-auto" style={{ borderColor: 'rgba(220,20,60,0.07)' }}>
+          <div className="flex items-center gap-2.5" title={isConnected ? serverUrl : 'No server configured'}>
             <span
-              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                isConnected
-                  ? 'bg-green-400 animate-pulse shadow-[0_0_12px_rgba(74,222,128,0.8)]'
-                  : 'bg-white/20'
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                isConnected ? 'bg-coral' : 'bg-white/15'
               }`}
+              style={isConnected ? { boxShadow: '0 0 8px rgba(220,20,60,0.7)', animation: 'pulse-glow 2s infinite' } : {}}
             />
-            <span className="font-sans text-[11px] text-white/50 uppercase tracking-widest truncate font-medium">
+            <span className="font-mono text-[10px] text-white/30 uppercase tracking-widest truncate">
               {isConnected ? displayHost : 'Not connected'}
             </span>
           </div>

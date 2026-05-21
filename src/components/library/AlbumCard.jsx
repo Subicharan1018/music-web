@@ -95,22 +95,30 @@ export const AlbumCard = ({ album }) => {
       {showMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] py-2 min-w-[160px] text-sm text-white overflow-hidden">
-            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={handlePlay}>Play Album</button>
-            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={(e) => {
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 backdrop-blur-xl rounded-xl py-2 min-w-[160px] text-sm text-white overflow-hidden"
+            style={{ background: 'rgba(10,10,10,0.95)', border: '1px solid rgba(220,20,60,0.15)', boxShadow: '0 8px 32px rgba(0,0,0,0.9)' }}
+          >
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/[0.05] transition-colors font-sans font-medium" onClick={handlePlay}>Play Album</button>
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/[0.05] transition-colors font-sans font-medium" onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
-              console.log('Add to Queue clicked');
             }}>Add to Queue</button>
-            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={(e) => {
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/[0.05] transition-colors font-sans font-medium" onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
               if (album.artistId) navigate(`/artist/${album.artistId}`);
             }}>Go to Artist</button>
-            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium text-coral hover:bg-coral/10" onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(false);
-            }}>Add to Playlist</button>
+            <button
+              className="w-full text-left px-5 py-2.5 transition-colors font-sans font-medium"
+              style={{ color: '#dc143c' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,20,60,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(false);
+              }}
+            >Add to Playlist</button>
           </div>
         </>
       )}
