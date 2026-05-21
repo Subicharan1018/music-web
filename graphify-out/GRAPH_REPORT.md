@@ -1,184 +1,141 @@
-# Graph Report - aurial-mine  (2026-05-21)
+# Graph Report - music-web  (2026-05-21)
 
 ## Corpus Check
-- 79 files · ~37,135 words
+- 87 files · ~40,608 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 430 nodes · 892 edges · 53 communities (20 shown, 33 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 15 edges (avg confidence: 0.89)
+- 421 nodes · 909 edges · 24 communities (19 shown, 5 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d02e2088`
+- Built from commit: `7b09452f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_UI Layout & Core Hooks|UI Layout & Core Hooks]]
-- [[_COMMUNITY_Library Content & Views|Library Content & Views]]
-- [[_COMMUNITY_Subsonic Data Layer|Subsonic Data Layer]]
-- [[_COMMUNITY_Audio Gain & Recommendations|Audio Gain & Recommendations]]
-- [[_COMMUNITY_Auth & Error Handling|Auth & Error Handling]]
-- [[_COMMUNITY_Playback Engine (Howler)|Playback Engine (Howler)]]
-- [[_COMMUNITY_Legacy Music Player Widget|Legacy Music Player Widget]]
-- [[_COMMUNITY_Interactive Modals & Overlays|Interactive Modals & Overlays]]
-- [[_COMMUNITY_Reference Subsonic Class|Reference Subsonic Class]]
-- [[_COMMUNITY_Lyric Synchronization|Lyric Synchronization]]
-- [[_COMMUNITY_Smart Shuffle & BPM Logic|Smart Shuffle & BPM Logic]]
-- [[_COMMUNITY_Zustand State Stores|Zustand State Stores]]
-- [[_COMMUNITY_App Entry & Orchestration|App Entry & Orchestration]]
-- [[_COMMUNITY_Runtime Environment & GSAP|Runtime Environment & GSAP]]
-- [[_COMMUNITY_Listening Statistics|Listening Statistics]]
-- [[_COMMUNITY_Lrc Formatting|Lrc Formatting]]
-- [[_COMMUNITY_ESLint Config|ESLint Config]]
-- [[_COMMUNITY_Test Content|Test Content]]
-- [[_COMMUNITY_Vite Infrastructure|Vite Infrastructure]]
-- [[_COMMUNITY_Color Utilities|Color Utilities]]
-- [[_COMMUNITY_System Icons|System Icons]]
-- [[_COMMUNITY_Discord Social|Discord Social]]
-- [[_COMMUNITY_Documentation|Documentation]]
-- [[_COMMUNITY_Hero Imagery|Hero Imagery]]
-- [[_COMMUNITY_React Framework|React Framework]]
-- [[_COMMUNITY_Vite Tooling|Vite Tooling]]
-- [[_COMMUNITY_Client Factory|Client Factory]]
-- [[_COMMUNITY_Header Component|Header Component]]
-- [[_COMMUNITY_Skeleton Loading|Skeleton Loading]]
-- [[_COMMUNITY_Toast Container|Toast Container]]
-- [[_COMMUNITY_Notification Items|Notification Items]]
-- [[_COMMUNITY_Class Utility|Class Utility]]
-- [[_COMMUNITY_Music Player Interface|Music Player Interface]]
-- [[_COMMUNITY_Audio Player Logic|Audio Player Logic]]
-- [[_COMMUNITY_Favorites View|Favorites View]]
-- [[_COMMUNITY_Shuffle API|Shuffle API]]
-- [[_COMMUNITY_Settings Management|Settings Management]]
-- [[_COMMUNITY_UI Preferences|UI Preferences]]
-- [[_COMMUNITY_Playlist Management|Playlist Management]]
-- [[_COMMUNITY_Community 44|Community 44]]
-- [[_COMMUNITY_Community 45|Community 45]]
-- [[_COMMUNITY_Community 46|Community 46]]
-- [[_COMMUNITY_Community 47|Community 47]]
-- [[_COMMUNITY_Community 48|Community 48]]
-- [[_COMMUNITY_Community 49|Community 49]]
-- [[_COMMUNITY_Community 50|Community 50]]
-- [[_COMMUNITY_Community 51|Community 51]]
-- [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 0|Community 0]]
+- [[_COMMUNITY_Community 1|Community 1]]
+- [[_COMMUNITY_Community 2|Community 2]]
+- [[_COMMUNITY_Community 3|Community 3]]
+- [[_COMMUNITY_Community 4|Community 4]]
+- [[_COMMUNITY_Community 5|Community 5]]
+- [[_COMMUNITY_Community 6|Community 6]]
+- [[_COMMUNITY_Community 7|Community 7]]
+- [[_COMMUNITY_Community 8|Community 8]]
+- [[_COMMUNITY_Community 9|Community 9]]
+- [[_COMMUNITY_Community 10|Community 10]]
+- [[_COMMUNITY_Community 11|Community 11]]
+- [[_COMMUNITY_Community 12|Community 12]]
+- [[_COMMUNITY_Community 13|Community 13]]
+- [[_COMMUNITY_Community 14|Community 14]]
+- [[_COMMUNITY_Community 15|Community 15]]
+- [[_COMMUNITY_Community 16|Community 16]]
+- [[_COMMUNITY_Community 17|Community 17]]
+- [[_COMMUNITY_Community 20|Community 20]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `useSubsonic()` - 43 edges
-2. `SubsonicClient` - 31 edges
+1. `useSubsonic()` - 45 edges
+2. `SubsonicClient` - 35 edges
 3. `useUIStore` - 29 edges
-4. `AudioEngine` - 20 edges
+4. `useLibraryStore` - 21 edges
 5. `useSettingsStore` - 20 edges
-6. `useLibraryStore` - 19 edges
+6. `AudioEngine` - 19 edges
 7. `usePlayerStore` - 19 edges
 8. `Subsonic` - 16 edges
 9. `usePlayAction()` - 14 edges
 10. `useAIShuffleStore` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `SubsonicClient` --semantically_similar_to--> `Subsonic (Legacy)`  [INFERRED] [semantically similar]
-  src/api/subsonic.js → _aurial_reference/subsonic.js
-- `ViteConfig` --conceptually_related_to--> `Main Entry`  [INFERRED]
-  vite.config.js → src/main.jsx
-- `PlayerBar` --calls--> `SubsonicClient`  [INFERRED]
-  src/components/layout/PlayerBar.jsx → src/api/subsonic.js
-- `QueuePanel` --calls--> `SubsonicClient`  [INFERRED]
-  src/components/queue/QueuePanel.jsx → src/api/subsonic.js
-- `SongRow` --calls--> `SubsonicClient`  [INFERRED]
-  src/components/library/SongRow.jsx → src/api/subsonic.js
+- `StatsPage()` --calls--> `dayjs`  [INFERRED]
+  src/pages/StatsPage.jsx → package.json
+- `cn()` --calls--> `clsx`  [INFERRED]
+  src/components/ui/cn.js → package.json
+- `RouteSync()` --calls--> `useUIStore`  [EXTRACTED]
+  src/App.jsx → src/store/uiStore.js
+- `AuthGuard()` --calls--> `useSettingsStore`  [EXTRACTED]
+  src/App.jsx → src/store/settingsStore.js
+- `App()` --calls--> `useSettingsStore`  [EXTRACTED]
+  src/App.jsx → src/store/settingsStore.js
 
-## Hyperedges (group relationships)
-- **Layout Orchestration** — appshell_appshell, sidebar_sidebar, playerbar_playerbar, topbar_topbar, queuepanel_queuepanel [EXTRACTED 0.95]
-- **Subsonic Interface** — subsonic_subsonicclient, endpoints_endpoints, subsonic_subsonic [INFERRED 0.90]
-- **Playback Control Flow** — useplayaction_useplayaction, useplayer_useplayer, nowplayingoverlay_nowplayingoverlay, music_player_widget_musicplayer [INFERRED 0.95]
-- **Playlist Management System** — createplaylistmodal_createplaylistmodal, addtoplaylistdialog_addtoplaylistdialog, playlistspage_playlistspage, playlistdetailpage_playlistdetailpage [INFERRED 0.90]
-- **Library Navigation System** — librarypage_librarypage, artistspage_artistspage, artistdetailpage_artistdetailpage, albumdetailpage_albumdetailpage, searchpage_searchpage [INFERRED 0.85]
-- **AI Smart Shuffle Subsystem** — playerstore_useplayerstore, shuffleservice_applyshufflealgorithm, scoringservice_calculatesongscore, affinitystore_useaffinitystore, weightedrandom_weightedrandomselect [EXTRACTED 0.95]
-- **Audio Playback Lifecycle** — playerstore_useplayerstore, audioengine_audioengine, scrobbleservice_scrobbleservice, replaygainservice_replaygainservice [EXTRACTED 0.90]
-- **Listening Habit Tracking Loop** — scrobbleservice_scrobbleservice, affinitystore_useaffinitystore, scoringservice_calculatesongscore [INFERRED 0.85]
+## Communities (24 total, 5 thin omitted)
 
-## Communities (53 total, 33 thin omitted)
+### Community 0 - "Community 0"
+Cohesion: 0.13
+Nodes (26): useGSAPScrollReveal(), usePlayAction(), useSubsonic(), AlbumCard(), formatDuration(), SongRow(), dayjs, BLOB_CONFIGS (+18 more)
 
-### Community 0 - "UI Layout & Core Hooks"
-Cohesion: 0.09
-Nodes (34): AppShell(), Sidebar(), SideRail(), TopBar(), LastFmCallbackPage(), formatDuration(), PlaylistDetailPage(), PlaylistsPage() (+26 more)
-
-### Community 1 - "Library Content & Views"
+### Community 1 - "Community 1"
 Cohesion: 0.08
-Nodes (23): useLyrics(), usePlayer(), useServerHealth(), useShuffleQueue(), PlayerBar(), BLOB_CONFIGS, FluidBackground(), NowPlayingOverlay() (+15 more)
+Nodes (28): ENDPOINTS, AuthException, createSubsonicClient(), NetworkException, ServerException, SplashScreen(), TopBar(), authCookies (+20 more)
 
-### Community 2 - "Subsonic Data Layer"
-Cohesion: 0.14
-Nodes (23): useGSAPScrollReveal(), usePlayAction(), useSubsonic(), AlbumCard(), formatDuration(), SongRow(), AlbumDetailPage(), ArtistDetailPage() (+15 more)
+### Community 2 - "Community 2"
+Cohesion: 0.12
+Nodes (21): useLyrics(), usePlayer(), useServerHealth(), useShuffleQueue(), NowPlayingOverlay(), SettingsPage(), formatTime(), ProgressBar() (+13 more)
 
-### Community 5 - "Playback Engine (Howler)"
+### Community 3 - "Community 3"
+Cohesion: 0.05
+Nodes (39): dependencies, colorthief, @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, framer-motion, fuse.js, gsap (+31 more)
+
+### Community 4 - "Community 4"
+Cohesion: 0.12
+Nodes (18): AppShell(), fmtTime(), PlayerBar(), Sidebar(), SideRail(), formatDuration(), PlaylistDetailPage(), PlaylistsPage() (+10 more)
+
+### Community 7 - "Community 7"
 Cohesion: 0.13
 Nodes (8): FALLBACK_TRACK, GENRE_BPM_MAP, RecommendationService, calculateSongScore(), songWeight(), applyShuffleAlgorithm(), interleave(), weightedRandomSelect()
 
-### Community 6 - "Legacy Music Player Widget"
-Cohesion: 0.16
-Nodes (15): cn(), Disc(), FALLBACK_TRACK, fmt(), initialReducerState(), MusicPlayer(), normalizeTracks(), ProgressBar() (+7 more)
-
-### Community 7 - "Interactive Modals & Overlays"
+### Community 8 - "Community 8"
 Cohesion: 0.14
-Nodes (18): AddToPlaylistDialog, AlbumDetailPage, ArtistDetailPage, ArtistsPage, CreatePlaylistModal, FluidBackground, LibraryPage, LoginPage (+10 more)
+Nodes (5): isValidUrl(), ShuffleApiService, ShuffleEmptyResponse, ShuffleNetworkError, ShuffleServerError
 
-### Community 9 - "Lyric Synchronization"
+### Community 9 - "Community 9"
+Cohesion: 0.15
+Nodes (16): clsx, cn(), Disc(), FALLBACK_TRACK, fmt(), initialReducerState(), MusicPlayer(), normalizeTracks() (+8 more)
+
+### Community 11 - "Community 11"
 Cohesion: 0.26
 Nodes (5): getCurrentLineIndex(), isLrcFormat(), parseLrc(), parsePlain(), LyricsService
 
-### Community 10 - "Smart Shuffle & BPM Logic"
-Cohesion: 0.18
-Nodes (14): useAffinityStore, AlbumCard, AudioEngine, estimateBpmFromGenre, GENRE_BPM_MAP, useLibraryStore, LRU Caching Pattern, PaletteService (+6 more)
-
-### Community 11 - "Zustand State Stores"
-Cohesion: 0.24
-Nodes (6): ENDPOINTS, AuthException, createSubsonicClient(), NetworkException, ServerException, LoginPage()
-
-### Community 13 - "Runtime Environment & GSAP"
-Cohesion: 0.22
-Nodes (11): App, AppShell, ENDPOINTS, Main Entry, PlayerBar, QueuePanel, Sidebar, SongRow (+3 more)
-
-### Community 14 - "Listening Statistics"
-Cohesion: 0.22
+### Community 13 - "Community 13"
+Cohesion: 0.25
 Nodes (3): ErrorBoundary, root, rootElement
 
-### Community 16 - "ESLint Config"
+### Community 14 - "Community 14"
 Cohesion: 0.33
 Nodes (4): computeStreak(), initialState, persistData, toDateKey()
 
-### Community 17 - "Test Content"
-Cohesion: 0.6
-Nodes (3): buildIndex(), getFuse(), mapRecommendationsToSongs()
+### Community 15 - "Community 15"
+Cohesion: 0.47
+Nodes (3): PlaylistMusicPortfolio(), formatDuration(), PlaylistRow()
 
-### Community 20 - "Color Utilities"
-Cohesion: 0.67
-Nodes (3): formatDuration(), PlaylistMusicPortfolio(), PlaylistRow()
+### Community 16 - "Community 16"
+Cohesion: 0.40
+Nodes (4): id, name, projectResources, resources
 
-### Community 21 - "System Icons"
-Cohesion: 0.5
+### Community 17 - "Community 17"
+Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + Vite
 
 ## Knowledge Gaps
-- **69 isolated node(s):** `LoginPage`, `LibraryPage`, `SettingsPage`, `AlbumDetailPage`, `ArtistDetailPage` (+64 more)
+- **67 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+62 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `SubsonicClient` connect `Audio Gain & Recommendations` to `Zustand State Stores`?**
-  _High betweenness centrality (0.100) - this node is a cross-community bridge._
-- **Why does `useSubsonic()` connect `Subsonic Data Layer` to `UI Layout & Core Hooks`, `Library Content & Views`, `Lyric Synchronization`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **What connects `LoginPage`, `LibraryPage`, `SettingsPage` to the rest of the system?**
-  _69 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `UI Layout & Core Hooks` be split into smaller, more focused modules?**
-  _Cohesion score 0.09 - nodes in this community are weakly interconnected._
-- **Should `Library Content & Views` be split into smaller, more focused modules?**
-  _Cohesion score 0.08 - nodes in this community are weakly interconnected._
-- **Should `Subsonic Data Layer` be split into smaller, more focused modules?**
-  _Cohesion score 0.14 - nodes in this community are weakly interconnected._
-- **Should `Audio Gain & Recommendations` be split into smaller, more focused modules?**
-  _Cohesion score 0.12 - nodes in this community are weakly interconnected._
+- **Why does `dependencies` connect `Community 3` to `Community 0`, `Community 9`, `Community 5`?**
+  _High betweenness centrality (0.260) - this node is a cross-community bridge._
+- **Why does `StatsPage()` connect `Community 0` to `Community 2`?**
+  _High betweenness centrality (0.192) - this node is a cross-community bridge._
+- **Why does `dayjs` connect `Community 0` to `Community 3`?**
+  _High betweenness centrality (0.188) - this node is a cross-community bridge._
+- **What connects `name`, `private`, `version` to the rest of the system?**
+  _67 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Community 0` be split into smaller, more focused modules?**
+  _Cohesion score 0.1273469387755102 - nodes in this community are weakly interconnected._
+- **Should `Community 1` be split into smaller, more focused modules?**
+  _Cohesion score 0.07781649245063879 - nodes in this community are weakly interconnected._
+- **Should `Community 2` be split into smaller, more focused modules?**
+  _Cohesion score 0.11707317073170732 - nodes in this community are weakly interconnected._
