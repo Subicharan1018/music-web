@@ -20,6 +20,8 @@ import { gsap } from '../../lib/gsap';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { useServerHealth } from '../../hooks/useServerHealth';
 import { usePlayerStore } from '../../store/playerStore';
+import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 const FALLBACK_COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%230a0a0a"/><circle cx="200" cy="200" r="120" fill="%23111"/><circle cx="200" cy="200" r="18" fill="%23333"/></svg>';
@@ -288,7 +290,7 @@ export const NowPlayingOverlay = () => {
   const {
     currentSong, isPlaying, position, duration, volume, queue,
     play, pause, next, prev, seek, setVolume,
-    shuffleMode, shufflePending, enableSmartShuffle, enableDumbShuffle, disableShuffle,
+    shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
     repeatMode, setRepeatMode, currentIndex,
   } = usePlayer();
 
@@ -298,9 +300,16 @@ export const NowPlayingOverlay = () => {
   // false = queue (BB8 day), true = lyrics (BB8 night)
   const [showLyrics, setShowLyrics] = useState(false);
   const { isConfigured, isHealthy, health } = useServerHealth();
+  
   const fetchNext = useAIShuffleStore((s) => s.fetchNext);
   const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
   const resetSession = useAIShuffleStore((s) => s.resetSession);
+  
+  const fetchNextV2 = useV2ShuffleStore((s) => s.fetchNext);
+  const v2SessionStatus = useV2ShuffleStore((s) => s.sessionStatus);
+  const resetSessionV2 = useV2ShuffleStore((s) => s.resetSession);
+  
+  const { v2ShuffleEnabled } = useSettingsStore();
 
   const { lines, currentLineIndex, isSynced, isLoading: lyricsLoading, error: lyricsError, handleScroll, registerLineRef } = useLyrics(currentSong, (position || 0) * 1000);
 
@@ -333,8 +342,9 @@ export const NowPlayingOverlay = () => {
     if (shufflePending) return; // reject while AI fetch in flight (C3)
     if (shuffleMode === 'none') enableDumbShuffle();
     else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
+    else if (shuffleMode === 'smart' && v2ShuffleEnabled) void enableV2Shuffle();
     else disableShuffle();
-  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, disableShuffle]);
+  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 
   const cycleRepeat = useCallback(() => {
     if (repeatMode === 'none') setRepeatMode('all');
@@ -361,10 +371,23 @@ export const NowPlayingOverlay = () => {
   }, [nowPlayingExpanded]);
 
   const RepeatIcon = repeatMode === 'one' ? Repeat1 : Repeat;
-  const shuffleColor = shuffleMode === 'smart' ? '#ff8c00' : shuffleMode === 'dumb' ? '#dc143c' : null;
+  const shuffleColor = shuffleMode === 'smart' ? '#ff8c00' : shuffleMode === 'smart-v2' ? '#a855f7' : shuffleMode === 'dumb' ? '#dc143c' : null;
 
-  const handleAI = useCallback(() => { fetchNext({ current: currentSong?.title }); }, [fetchNext, currentSong?.title]);
-  const handleResetSession = useCallback(async () => { await resetSession(currentSong?.title); }, [resetSession, currentSong?.title]);
+  const handleAI = useCallback(() => { 
+    if (shuffleMode === 'smart-v2') {
+      fetchNextV2();
+    } else {
+      fetchNext({ current: currentSong?.title }); 
+    }
+  }, [fetchNext, fetchNextV2, currentSong?.title, shuffleMode]);
+  
+  const handleResetSession = useCallback(async () => { 
+    if (shuffleMode === 'smart-v2') {
+      await resetSessionV2();
+    } else {
+      await resetSession(currentSong?.title); 
+    }
+  }, [resetSession, resetSessionV2, currentSong?.title, shuffleMode]);
 
   return (
     <div
@@ -387,6 +410,7 @@ export const NowPlayingOverlay = () => {
 
         <div className="text-center">
           {queueSource === 'model' && <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/35">AI · Recommended</p>}
+          {queueSource === 'v2-model' && <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#d8b4fe]/70">V2 AI · Recommended</p>}
           {queueSource === 'cold_start' && <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#c0392b]/70">AI · Discovery</p>}
           {isConfigured && (
             <div className="flex items-center justify-center gap-1.5 mt-0.5">
@@ -436,9 +460,13 @@ export const NowPlayingOverlay = () => {
               </div>
               <button type="button" onClick={handleAI}
                 className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all hover:scale-105 active:scale-95 mt-1"
-                style={{ background: 'rgba(192,57,43,0.25)', border: '1px solid rgba(192,57,43,0.45)', color: '#e34262' }}
+                style={{ 
+                  background: shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.25)' : 'rgba(192,57,43,0.25)', 
+                  border: `1px solid ${shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.45)' : 'rgba(192,57,43,0.45)'}`, 
+                  color: shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262' 
+                }}
                 aria-label="AI next">
-                <Sparkles size={10} /><span>AI✦</span>
+                <Sparkles size={10} /><span>{shuffleMode === 'smart-v2' ? 'V2✦' : 'AI✦'}</span>
               </button>
             </div>
           </div>
@@ -492,9 +520,9 @@ export const NowPlayingOverlay = () => {
               <Volume2 size={13} className="text-white/25 flex-shrink-0" />
             </div>
 
-            {isConfigured && sessionStatus && (
+            {(shuffleMode === 'smart-v2' ? v2SessionStatus : sessionStatus) && (
               <div className="flex items-center justify-center gap-3 mt-4 font-mono text-[9px] text-white/20 uppercase tracking-[0.15em]">
-                <span>Session · {sessionStatus.songCount} songs</span>
+                <span>Session · {shuffleMode === 'smart-v2' ? v2SessionStatus?.songCount : sessionStatus?.songCount} songs</span>
                 <button type="button" onClick={handleResetSession} className="hover:text-white/45 underline underline-offset-2">Reset</button>
               </div>
             )}

@@ -19,6 +19,7 @@ import AudioEngine from '../services/AudioEngine';
 import ScrobbleService from '../services/ScrobbleService';
 import { applyShuffleAlgorithm } from '../services/ShuffleService';
 import { useAIShuffleStore } from './aiShuffleStore';
+import { useV2ShuffleStore } from './v2ShuffleStore';
 import { mapRecommendationsToSongs } from '../utils/mapRecommendations';
 import { useAffinityStore } from './affinityStore';
 import * as ListeningLog from '../services/listeningLog';
@@ -66,7 +67,7 @@ const DEFAULT_STATE = {
   currentIndex: 0,
   currentSong: null,
   volume: 1.0,
-  shuffleMode: 'none',    // 'none' | 'dumb' | 'smart'
+  shuffleMode: 'none',    // 'none' | 'dumb' | 'smart' | 'smart-v2'
   originalQueue: [],
   repeatMode: 'none',
   gainValue: 0.0,
@@ -118,24 +119,46 @@ async function _triggerSmartLocalRefill(getState) {
     console.log(`[SmartLocal] Refilling for: "${currentSong.title}" | pool remaining: ${_playlistPool.length}`);
 
     let orderedBatch = null;
-    const aiStore = useAIShuffleStore.getState();
 
-    if (aiStore.isConfigured && aiStore.isHealthy) {
-      try {
-        console.log(`[SmartLocal] → Sending /next request for refill batch (${batch.length} songs)`);
-        await aiStore.fetchNext({
-          current: currentSong.title || '',
-          artist:  currentSong.artist || '',
-          count:   SMART_LOCAL_BATCH,
-        });
-        const fresh = useAIShuffleStore.getState();
-        const mapped = mapRecommendationsToSongs(fresh.recommendedQueue, batch);
-        if (mapped.length >= 3) {
+    if (state.shuffleMode === 'smart-v2') {
+      const v2Store = useV2ShuffleStore.getState();
+      if (v2Store.isConfigured && v2Store.isHealthy) {
+        console.log(`[SmartLocal-V2] → Sending /next request for refill batch (${batch.length} songs)`);
+        await v2Store.fetchNext();
+        const freshV2 = useV2ShuffleStore.getState();
+        const mapped = mapRecommendationsToSongs(freshV2.recommendedQueue, batch);
+        if (mapped.length > 0) {
           orderedBatch = mapped;
-          console.log(`[SmartLocal] ✓ AI ordered ${mapped.length} songs for refill`);
+          console.log(`[SmartLocal-V2] ✓ V2 AI ordered ${mapped.length} songs for refill`);
+        } else {
+          // Fail loudly for V2
+          console.error('[SmartLocal-V2] AI mapping produced 0 songs! Halting refill.');
+          return;
         }
-      } catch (e) {
-        console.warn('[SmartLocal] AI refill request failed, using raw batch order:', e.message);
+      } else {
+        console.error('[SmartLocal-V2] V2 Store not configured or unhealthy. Halting refill.');
+        return;
+      }
+    } else {
+      // V1 Logic
+      const aiStore = useAIShuffleStore.getState();
+      if (aiStore.isConfigured && aiStore.isHealthy) {
+        try {
+          console.log(`[SmartLocal] → Sending /next request for refill batch (${batch.length} songs)`);
+          await aiStore.fetchNext({
+            current: currentSong.title || '',
+            artist:  currentSong.artist || '',
+            count:   SMART_LOCAL_BATCH,
+          });
+          const fresh = useAIShuffleStore.getState();
+          const mapped = mapRecommendationsToSongs(fresh.recommendedQueue, batch);
+          if (mapped.length >= 3) {
+            orderedBatch = mapped;
+            console.log(`[SmartLocal] ✓ AI ordered ${mapped.length} songs for refill`);
+          }
+        } catch (e) {
+          console.warn('[SmartLocal] AI refill request failed, using raw batch order:', e.message);
+        }
       }
     }
 
@@ -242,12 +265,36 @@ export const usePlayerStore = create((set, get) => ({
       } else {
         if (autoAdvanced) {
           // Close the open event before stopping
-          if (state.currentSong) ListeningLog.onSongEnded(state.currentSong, 0);
+          if (state.currentSong) {
+            ListeningLog.onSongEnded(state.currentSong, 0);
+            
+            // V2 Feedback
+            if (shuffleMode === 'smart-v2' && audioEngine) {
+              const dur = audioEngine.getDuration();
+              const played = audioEngine.getPlayedDuration();
+              const ratio = dur > 0 ? Math.min(played / dur, 1.0) : 0;
+              useV2ShuffleStore.getState().submitFeedback(state.currentSong.title, ratio, 'trackdone');
+            }
+          }
           audioEngine?.stop();
           scrobbleService?.onTrackChange();
           set({ isPlaying: false, position: 0 });
         }
         return;
+      }
+    }
+
+    // Close the current event (skip or track done)
+    if (state.currentSong) {
+      ListeningLog.onSongEnded(state.currentSong, 0);
+      
+      // V2 Feedback
+      if (shuffleMode === 'smart-v2' && audioEngine) {
+        const dur = audioEngine.getDuration();
+        const played = audioEngine.getPlayedDuration();
+        const ratio = dur > 0 ? Math.min(played / dur, 1.0) : 0;
+        const reason = audioEngine.isNaturalEnd ? 'trackdone' : 'fwdbtn';
+        useV2ShuffleStore.getState().submitFeedback(state.currentSong.title, ratio, reason);
       }
     }
 
@@ -275,7 +322,7 @@ export const usePlayerStore = create((set, get) => ({
 
     // Smart Local: trigger background refill when ≤ SMART_LOCAL_THRESHOLD remain ahead
     const fresh = get();
-    if (fresh.shuffleMode === 'smart' && _playlistPool.length > 0) {
+    if ((fresh.shuffleMode === 'smart' || fresh.shuffleMode === 'smart-v2') && _playlistPool.length > 0) {
       const remainingAhead = fresh.queue.length - 1 - nextIndex;
       if (remainingAhead <= SMART_LOCAL_THRESHOLD) {
         _triggerSmartLocalRefill(get);
@@ -287,6 +334,18 @@ export const usePlayerStore = create((set, get) => ({
     const state = get();
     const { queue, currentIndex, audioEngine, scrobbleService, subsonicClient, shuffleMode } = state;
     if (queue.length === 0) return;
+
+    if (state.currentSong) {
+      ListeningLog.onSongEnded(state.currentSong, 0);
+      
+      // V2 Feedback
+      if (shuffleMode === 'smart-v2' && audioEngine) {
+        const dur = audioEngine.getDuration();
+        const played = audioEngine.getPlayedDuration();
+        const ratio = dur > 0 ? Math.min(played / dur, 1.0) : 0;
+        useV2ShuffleStore.getState().submitFeedback(state.currentSong.title, ratio, 'backbtn');
+      }
+    }
 
     let prevIndex = currentIndex - 1;
     if (prevIndex < 0) prevIndex = queue.length - 1;
@@ -496,6 +555,94 @@ export const usePlayerStore = create((set, get) => ({
       console.log(`[SmartShuffle] ✓ Queue ready — ${initialQueue.length} songs (pool: ${_playlistPool.length} remaining)`);
     } catch (e) {
       console.error('[SmartShuffle] enableSmartShuffle failed:', e);
+    } finally {
+      _shuffleLock = false;
+      set({ shufflePending: false });
+    }
+  },
+
+  /**
+   * S1/C1 — Enable V2 Experimental Shuffle.
+   * Completely independent from V1, fails loudly if API is down.
+   */
+  enableV2Shuffle: async (options = {}) => {
+    if (_shuffleLock) return;
+    const v2Store = useV2ShuffleStore.getState();
+    
+    // Fail loudly if V2 is not configured
+    if (!v2Store.isConfigured || !v2Store.isHealthy) {
+      console.error('[V2Shuffle] V2 server is not healthy. Halting shuffle enable.');
+      return;
+    }
+
+    _shuffleLock = true;
+    set({ shufflePending: true });
+
+    try {
+      const state = get();
+      const currentSong = state.currentSong;
+      const pool = options.songs || (state.originalQueue.length > 0 ? state.originalQueue : state.queue);
+      const originalQueue = state.shuffleMode === 'none' ? [...state.queue] : state.originalQueue;
+      const seedSong = pool[Math.floor(Math.random() * pool.length)];
+
+      console.log(`[V2Shuffle] Seed selected: "${seedSong?.title}" (current was: "${currentSong?.title}")`);
+
+      // Reset V2 Session on manual shuffle enable
+      v2Store.resetSession();
+      // Temporarily inject the seed into played titles so context knows it
+      useV2ShuffleStore.setState({ playedTitles: [seedSong?.title] });
+
+      const poolWithoutSeed = pool.filter((s) => s.id !== seedSong?.id);
+      for (let i = poolWithoutSeed.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [poolWithoutSeed[i], poolWithoutSeed[j]] = [poolWithoutSeed[j], poolWithoutSeed[i]];
+      }
+      _playlistPool = poolWithoutSeed;
+
+      const firstBatch = _playlistPool.splice(0, SMART_LOCAL_BATCH);
+
+      let ordered = null;
+      console.log(`[V2Shuffle] → Sending POST /next for initial batch`);
+      await v2Store.fetchNext();
+      
+      const freshV2 = useV2ShuffleStore.getState();
+      const mapped = mapRecommendationsToSongs(freshV2.recommendedQueue, firstBatch);
+      
+      if (mapped.length > 0) {
+        ordered = mapped;
+        console.log(`[V2Shuffle] ✓ Server returned ${mapped.length} valid songs`);
+      } else {
+        throw new Error('V2 mapping produced 0 songs');
+      }
+
+      const orderedDeduped = seedSong ? ordered.filter((s) => s.id !== seedSong.id) : ordered;
+      const initialQueue = seedSong ? [seedSong, ...orderedDeduped] : orderedDeduped;
+
+      const queuedIds = new Set(initialQueue.map((s) => s.id));
+      _playlistPool = _playlistPool.filter((s) => !queuedIds.has(s.id));
+
+      set({
+        shuffleMode: 'smart-v2',
+        originalQueue,
+        queue: initialQueue,
+        queueSource: 'v2-model',
+        currentIndex: 0,
+        currentSong: initialQueue[0] || null,
+      });
+
+      if (initialQueue[0]?.id !== currentSong?.id) {
+        _loadAndPlay(initialQueue[0], get(), initialQueue[1] || null);
+      } else {
+        const { audioEngine, subsonicClient } = get();
+        if (audioEngine && subsonicClient && initialQueue[1]) {
+          audioEngine.preloadNext(initialQueue[1], subsonicClient.stream(initialQueue[1].id));
+        }
+      }
+      
+      console.log(`[V2Shuffle] ✓ Queue ready — ${initialQueue.length} songs`);
+    } catch (e) {
+      console.error('[V2Shuffle] Failed to start V2 shuffle (failing loudly):', e);
+      // Fail loudly: we don't fall back, we just abort the shuffle enable.
     } finally {
       _shuffleLock = false;
       set({ shufflePending: false });

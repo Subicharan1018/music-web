@@ -17,6 +17,8 @@ import { useAIShuffleStore } from '../store/aiShuffleStore';
 import { useListeningStatsStore, ERR_NOT_CONFIGURED, ERR_ENDPOINT_404, ERR_NETWORK } from '../store/listeningStatsStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { Link } from 'react-router-dom';
+import { PingingDotChart } from '../components/ui/PingingDotChart';
+import { GlowingRadarChart } from '../components/ui/GlowingRadarChart';
 
 // Recharts-heavy component loaded in its own chunk
 const DailyListeningChart = lazy(() =>
@@ -306,6 +308,15 @@ export const StatsPage = () => {
 
       {/* Nº 07 · SERVER LISTENING STATS */}
       <ServerListeningStats />
+
+      {/* Nº 08 · VISUAL ANALYTICS */}
+      <div className="mb-14 reveal-item">
+        <SectionHeader num="Nº 08" title="Visual Analytics" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <PingingDotChart />
+          <GlowingRadarChart />
+        </div>
+      </div>
 
     </div>
   );

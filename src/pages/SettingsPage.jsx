@@ -13,6 +13,8 @@ import { ExternalLink, Music } from 'lucide-react';
 import { useServerHealth } from '../hooks/useServerHealth';
 import { useAIShuffleStore } from '../store/aiShuffleStore';
 import { ShuffleApiService, startedAtFormatted } from '../services/ShuffleApiService';
+import { useV2ShuffleStore } from '../store/v2ShuffleStore';
+import { V2ShuffleApiService } from '../services/V2ShuffleApiService';
 
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
 
@@ -43,6 +45,8 @@ export const SettingsPage = () => {
     username: storeUsername,
     password: storePassword,
     localShuffleUrl,
+    v2ShuffleUrl: storeV2ShuffleUrl,
+    v2ShuffleEnabled: storeV2ShuffleEnabled,
     lastfmApiKey: storeLastfmApiKey,
     lastfmApiSecret: storeLastfmApiSecret,
     lastfmSessionKey,
@@ -60,6 +64,8 @@ export const SettingsPage = () => {
   const [username, setUsername]   = useState(storeUsername || '');
   const [password, setPassword]   = useState(storePassword || '');
   const [shuffleUrl, setShuffleUrl] = useState(localShuffleUrl || '');
+  const [v2ShuffleUrl, setV2ShuffleUrl] = useState(storeV2ShuffleUrl || '');
+  const [v2ShuffleEnabled, setV2ShuffleEnabled] = useState(storeV2ShuffleEnabled || false);
   const [lastfmApiKey, setLastfmApiKey]       = useState(storeLastfmApiKey || '');
   const [lastfmApiSecret, setLastfmApiSecret] = useState(storeLastfmApiSecret || '');
 
@@ -69,6 +75,8 @@ export const SettingsPage = () => {
   const [lastfmStatus, setLastfmStatus] = useState(null);
   const [isTestingAi, setIsTestingAi] = useState(false);
   const [aiTestResult, setAiTestResult] = useState(null);
+  const [isTestingV2Ai, setIsTestingV2Ai] = useState(false);
+  const [v2AiTestResult, setV2AiTestResult] = useState(null);
 
   const { isConfigured, isHealthy, health } = useServerHealth();
   const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
@@ -100,14 +108,42 @@ export const SettingsPage = () => {
     }
   };
 
+  const handleTestV2AiConnection = async () => {
+    setV2AiTestResult(null);
+    setIsTestingV2Ai(true);
+    try {
+      const formattedUrl = v2ShuffleUrl.trim().replace(/\/$/, '');
+      if (!formattedUrl) {
+        setV2AiTestResult({ type: 'error', message: 'Please enter a URL first.' });
+        return;
+      }
+      const tempService = new V2ShuffleApiService({ baseUrl: formattedUrl });
+      const healthData = await tempService.getHealth();
+      if (healthData.isHealthy) {
+        setV2AiTestResult({
+          type: 'success',
+          message: `Connected · Plays processed: ${healthData.totalPlaysProcessed?.toLocaleString() ?? 0}`,
+        });
+      } else {
+        setV2AiTestResult({ type: 'error', message: `Server returned status: ${healthData.status || healthData.error || 'Unknown Error'}` });
+      }
+    } catch (err) {
+      setV2AiTestResult({ type: 'error', message: err.message || 'Connection failed.' });
+    } finally {
+      setIsTestingV2Ai(false);
+    }
+  };
+
   useEffect(() => {
     setUrl(serverUrl || '');
     setUsername(storeUsername || '');
     setPassword(storePassword || '');
     setShuffleUrl(localShuffleUrl || '');
+    setV2ShuffleUrl(storeV2ShuffleUrl || '');
+    setV2ShuffleEnabled(storeV2ShuffleEnabled || false);
     setLastfmApiKey(storeLastfmApiKey || '');
     setLastfmApiSecret(storeLastfmApiSecret || '');
-  }, [serverUrl, storeUsername, storePassword, localShuffleUrl, storeLastfmApiKey, storeLastfmApiSecret]);
+  }, [serverUrl, storeUsername, storePassword, localShuffleUrl, storeV2ShuffleUrl, storeV2ShuffleEnabled, storeLastfmApiKey, storeLastfmApiSecret]);
 
   // Show banner based on ?lastfm= query param set by LastFmCallbackPage
   useEffect(() => {
@@ -145,6 +181,8 @@ export const SettingsPage = () => {
     setServerConfig({ serverUrl: formattedUrl, username: username.trim(), password });
     updateSettings({
       localShuffleUrl: shuffleUrl.trim().replace(/\/$/, ''),
+      v2ShuffleUrl: v2ShuffleUrl.trim().replace(/\/$/, ''),
+      v2ShuffleEnabled,
       lastfmApiKey: lastfmApiKey.trim(),
       lastfmApiSecret: lastfmApiSecret.trim(),
     });
@@ -268,6 +306,44 @@ export const SettingsPage = () => {
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Nº 03B · Experimental Context-Aware AI ───────────────────────────── */}
+      <h2 className="font-sans font-bold text-[11px] tracking-[0.3em] uppercase text-white/40 mb-6 mt-16 flex items-center gap-2">
+        <div className="w-8 h-[1px] bg-gradient-to-r from-purple-500 to-transparent"></div>
+        Experimental Context-Aware AI
+      </h2>
+      <div className="space-y-5 mb-6 bg-white/5 p-6 rounded-2xl border border-white/5 shadow-lg">
+        <label className="flex items-center gap-3 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            checked={v2ShuffleEnabled}
+            onChange={(e) => setV2ShuffleEnabled(e.target.checked)}
+            className="accent-purple-500 w-4 h-4"
+          />
+          <span className="font-sans text-sm font-bold text-white drop-shadow-sm">Enable Experimental V2 Algorithm</span>
+        </label>
+        {v2ShuffleEnabled && (
+          <>
+            <InputField
+              label="V2 Server URL"
+              type="url"
+              value={v2ShuffleUrl}
+              onChange={setV2ShuffleUrl}
+              placeholder="http://100.99.105.51:5500"
+              hint="Requires a dedicated V2 context-aware backend."
+            />
+            <StatusBanner result={v2AiTestResult} />
+          </>
+        )}
+      </div>
+
+      {v2ShuffleEnabled && (
+        <div className="flex gap-4 mb-16">
+          <Button variant="ghost" onClick={handleTestV2AiConnection} disabled={isTestingV2Ai}>
+            {isTestingV2Ai ? 'Testing…' : 'Test Connection'}
+          </Button>
         </div>
       )}
 

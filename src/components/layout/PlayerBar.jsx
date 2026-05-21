@@ -19,6 +19,8 @@ import { usePlayer } from '../../hooks/usePlayer';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { useUIStore } from '../../store/uiStore';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
+import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 /* ── helpers ── */
 const fmt = (s) => {
@@ -34,7 +36,7 @@ export const PlayerBar = () => {
   const {
     currentSong, isPlaying, position, duration,
     volume, play, pause, next, prev, seek, setVolume,
-    shuffleMode, shufflePending, enableSmartShuffle, enableDumbShuffle, disableShuffle,
+    shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
     repeatMode, setRepeatMode, queue,
   } = usePlayer();
 
@@ -43,6 +45,10 @@ export const PlayerBar = () => {
   const { nowPlayingExpanded, setNowPlayingExpanded } = useUIStore();
   const fetchNext = useAIShuffleStore((s) => s.fetchNext);
   const aiActive = useAIShuffleStore((s) => s.sessionStatus?.songCount > 0);
+  
+  const fetchNextV2 = useV2ShuffleStore((s) => s.fetchNext);
+  const v2Active = useV2ShuffleStore((s) => s.sessionStatus?.songCount > 0);
+  const { v2ShuffleEnabled } = useSettingsStore();
 
   /* ── Responsive: mobile breakpoints ── */
   const [width, setWidth] = useState(window.innerWidth);
@@ -116,8 +122,9 @@ export const PlayerBar = () => {
     if (shufflePending) return; // reject while AI fetch in flight
     if (shuffleMode === 'none') enableDumbShuffle();
     else if (shuffleMode === 'dumb') void enableSmartShuffle(); // S6: no queue arg
+    else if (shuffleMode === 'smart' && v2ShuffleEnabled) void enableV2Shuffle();
     else disableShuffle();
-  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, disableShuffle]);
+  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 
 
   const cycleRepeat = useCallback((e) => {
@@ -130,8 +137,12 @@ export const PlayerBar = () => {
   /* ── AI✦ pill ── */
   const handleAI = useCallback((e) => {
     e.stopPropagation();
-    fetchNext({ current: currentSong?.title });
-  }, [fetchNext, currentSong]);
+    if (shuffleMode === 'smart-v2') {
+      fetchNextV2();
+    } else {
+      fetchNext({ current: currentSong?.title });
+    }
+  }, [fetchNext, fetchNextV2, currentSong, shuffleMode]);
 
   /* ── Cover URL ── */
   const coverUrl = currentSong?.coverArt && client
@@ -143,6 +154,8 @@ export const PlayerBar = () => {
   /* ── Shuffle icon color ── */
   const shuffleColor = shuffleMode === 'smart'
     ? '#ff8c00'
+    : shuffleMode === 'smart-v2'
+      ? '#a855f7' // purple-500
     : shuffleMode === 'dumb'
       ? '#dc143c'
       : undefined;
@@ -390,7 +403,8 @@ export const PlayerBar = () => {
               type="button"
               onClick={toggleShuffle}
               title={
-                shuffleMode === 'smart' ? 'AI Shuffle (click to disable)'
+                shuffleMode === 'smart' ? (v2ShuffleEnabled ? 'AI Shuffle (click for V2)' : 'AI Shuffle (click to disable)')
+                  : shuffleMode === 'smart-v2' ? 'V2 Context AI (click to disable)'
                   : shuffleMode === 'dumb' ? 'Shuffle (click for AI)'
                     : 'Shuffle off'
               }
@@ -427,17 +441,25 @@ export const PlayerBar = () => {
             disabled={shufflePending}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 flex-shrink-0"
             style={{
-              background: aiActive ? 'rgba(180,20,20,0.35)' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${aiActive ? 'rgba(192,57,43,0.7)' : 'rgba(255,255,255,0.12)'}`,
-              color: aiActive ? '#e34262' : 'rgba(255,255,255,0.4)',
-              boxShadow: aiActive ? '0 0 12px rgba(192,57,43,0.3)' : 'none',
+              background: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
+                ? (shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.35)' : 'rgba(180,20,20,0.35)') 
+                : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${(shuffleMode === 'smart-v2' ? v2Active : aiActive) 
+                ? (shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.7)' : 'rgba(192,57,43,0.7)') 
+                : 'rgba(255,255,255,0.12)'}`,
+              color: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
+                ? (shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262') 
+                : 'rgba(255,255,255,0.4)',
+              boxShadow: (shuffleMode === 'smart-v2' ? v2Active : aiActive) 
+                ? (shuffleMode === 'smart-v2' ? '0 0 12px rgba(168,85,247,0.3)' : '0 0 12px rgba(192,57,43,0.3)') 
+                : 'none',
               opacity: shufflePending ? 0.5 : 1,
               animation: shufflePending ? 'pulse 1s ease-in-out infinite' : 'none',
             }}
             aria-label="AI Shuffle next"
           >
             <Sparkles size={11} className={shufflePending ? 'animate-spin' : ''} />
-            {!isCompact && <span>AI</span>}
+            {!isCompact && <span>{shuffleMode === 'smart-v2' ? 'V2' : 'AI'}</span>}
           </button>
 
         </div>

@@ -109,6 +109,9 @@ export const usePlayer = () => {
     setAffinityRefresh(prev => prev + 1);
   }, [store, affinityData]);
 
+  const enableV2Shuffle = useCallback(async (songs, options = {}) => {
+    await store.enableV2Shuffle(songs, options);
+  }, [store]);
 
   const enableDumbShuffle = useCallback(() => store.enableDumbShuffle(), [store]);
   const disableShuffle = useCallback(() => store.disableShuffle(), [store]);
@@ -135,6 +138,7 @@ export const usePlayer = () => {
     addToQueue,
     setRepeatMode,
     enableSmartShuffle,
+    enableV2Shuffle,
     enableDumbShuffle,
     disableShuffle,
   };

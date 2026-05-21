@@ -31,4 +31,5 @@ export const ENDPOINTS = {
   SCROBBLE: 'scrobble.view',
   GET_SONGS_BY_GENRE: 'getSongsByGenre.view',
   GET_TOP_SONGS: 'getTopSongs.view',
+  GET_GENRES: 'getGenres.view',
 };

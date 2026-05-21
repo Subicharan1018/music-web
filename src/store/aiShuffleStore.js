@@ -93,10 +93,6 @@ export const useAIShuffleStore = create(
           const health = await _serviceInstance.getHealth();
           const wasHealthy = get().isHealthy;
           set({ health, isHealthy: health.isHealthy, healthLastChecked: Date.now() });
-          // Only fetch session status when transitioning to healthy (not every poll)
-          if (health.isHealthy && !wasHealthy) {
-            get().fetchSessionStatus().catch(() => {});
-          }
         } catch (err) {
           set({ health: null, isHealthy: false });
           if (!(err instanceof ShuffleNetworkError)) {
@@ -176,23 +172,8 @@ export const useAIShuffleStore = create(
           if (currentSongTitle) {
             await get().fetchNext({ current: currentSongTitle }).catch(() => {});
           }
-          // Refresh session status
-          get().fetchSessionStatus().catch(() => {});
         } catch (err) {
           console.error('[aiShuffleStore] resetSession error:', err);
-        }
-      },
-
-      /**
-       * GET /session/status — mirrors sessionStatusProvider.
-       */
-      fetchSessionStatus: async () => {
-        if (!_serviceInstance || _serviceInstance._unconfigured) return;
-        try {
-          const sessionStatus = await _serviceInstance.getSessionStatus();
-          set({ sessionStatus });
-        } catch {
-          // Non-critical — don't surface to UI
         }
       },
 

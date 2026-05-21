@@ -195,6 +195,10 @@ class AudioEngine {
     return 0;
   }
 
+  getPlayedDuration() {
+    return this._accumulatedTime || 0;
+  }
+
   _checkSkipCondition() {
     if (this.activeHowl && this.activeSong && !this.isNaturalEnd) {
       const pos = this.getCurrentPosition();

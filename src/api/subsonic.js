@@ -226,6 +226,10 @@ class SubsonicClient {
     return this._request(ENDPOINTS.GET_LYRICS_BY_SONG_ID, { id });
   }
 
+  async getGenres() {
+    return this._request(ENDPOINTS.GET_GENRES);
+  }
+
   /**
    * GET /rest/getSongsByGenre — fetch songs matching a genre tag.
    * Used by the shuffle pipeline to expand the candidate pool beyond the current playlist.

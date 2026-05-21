@@ -198,22 +198,6 @@ export class ShuffleApiService {
     });
   }
 
-  // ── GET /session/status ────────────────────────────────────────────────────
-
-  async getSessionStatus() {
-    if (this._unconfigured) throw new ShuffleNetworkError('Server not configured');
-    return this._wrap(async (signal) => {
-      const res = await fetch(`${this._base}/session/status`, { signal, headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new ShuffleServerError(res.status);
-      const json = await res.json();
-      return {
-        sessionId:  json.session_id?.toString() ?? '',
-        songCount:  _parseInt(json.song_count),
-        startedAt:  json.started_at?.toString() ?? '',
-      };
-    });
-  }
-
   // ── Error mapping — mirrors Dart _wrap() ───────────────────────────────────
 
   async _wrap(callFn) {
