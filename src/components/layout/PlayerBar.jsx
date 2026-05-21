@@ -1,6 +1,6 @@
 /**
  * PlayerBar.jsx
- * Now-playing dock with an elegant inline Tailwind design.
+ * Premium, glassmorphic floating player bar.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import { usePlayer } from '../../hooks/usePlayer';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { useUIStore } from '../../store/uiStore';
 
-const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23111"/><circle cx="200" cy="200" r="120" fill="%23222"/><circle cx="200" cy="200" r="18" fill="%23333"/></svg>';
+const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23000"/><circle cx="200" cy="200" r="120" fill="%23111"/><circle cx="200" cy="200" r="18" fill="%23dc143c"/></svg>';
 
 export const PlayerBar = () => {
   const {
@@ -67,11 +67,14 @@ export const PlayerBar = () => {
   if (isMobile) {
     return (
       <footer
-        className={`fixed bottom-0 left-0 w-full bg-transparent z-[70] px-4 pb-4 transition-opacity ${
-          nowPlayingExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        className={`fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] z-[70] transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+          nowPlayingExpanded ? 'opacity-0 pointer-events-none translate-y-10 scale-95' : 'opacity-100 translate-y-0 scale-100'
         }`}
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
+        {/* Outer Glow Wrapper */}
+        <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-coral/40 via-mustard/20 to-black opacity-30 blur-xl pointer-events-none" />
+        
         <div
           role="button"
           tabIndex={0}
@@ -79,26 +82,42 @@ export const PlayerBar = () => {
           onKeyDown={(event) => {
             if (event.key === 'Enter') openOverlay();
           }}
-          className="w-full bg-paper/90 backdrop-blur-xl border border-ink/10 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl"
+          className="relative w-full bg-paper/60 backdrop-blur-2xl rounded-[2rem] px-3 py-3 flex items-center gap-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] border border-ink/5 overflow-hidden"
         >
-          <div className="w-11 h-11 rounded-lg overflow-hidden bg-ink/10 flex-shrink-0 shadow-md">
-            <img src={coverUrl} alt={currentSong?.title || 'Cover'} className="w-full h-full object-cover" />
+          {/* Subtle inner mesh/gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none" />
+
+          {/* Art */}
+          <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-paper-dark shadow-[0_0_15px_rgba(220,20,60,0.4)] flex-shrink-0">
+            <img 
+              src={coverUrl} 
+              alt={currentSong?.title || 'Cover'} 
+              className={`w-full h-full object-cover transition-transform duration-1000 ${isPlaying ? 'animate-spin-slow' : ''}`} 
+              style={{ animationDuration: '8s' }}
+            />
+            {/* Vinyl inner hole */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-paper rounded-full shadow-inner border border-white/10" />
           </div>
-          <div className="flex-1 min-w-0 text-left">
-            <div className="font-sans font-bold text-sm text-ink truncate tracking-tight">{currentSong?.title || 'No track selected'}</div>
-            <div className="font-sans text-xs text-ink/60 truncate">{currentSong?.artist || '—'}</div>
+
+          <div className="flex-1 min-w-0 text-left z-10 pl-1">
+            <div className="font-serif italic font-bold text-sm text-ink truncate drop-shadow-md">{currentSong?.title || 'No track selected'}</div>
+            <div className="font-sans text-[11px] font-medium text-ink/60 truncate uppercase tracking-widest">{currentSong?.artist || '—'}</div>
           </div>
+          
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               isPlaying ? pause() : play();
             }}
-            className="w-10 h-10 rounded-full bg-ink text-paper flex items-center justify-center hover:scale-105 transition-transform"
+            className="relative z-10 w-11 h-11 rounded-full bg-gradient-to-br from-coral to-mustard text-paper flex items-center justify-center shadow-[0_0_20px_rgba(220,20,60,0.5)] hover:scale-105 active:scale-95 transition-transform"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? <Pause size={20} className="fill-paper" /> : <Play size={20} className="fill-paper ml-0.5" />}
+            {isPlaying ? <Pause size={20} className="fill-paper" /> : <Play size={20} className="fill-paper ml-1" />}
           </button>
+
+          {/* Minimal Mobile Progress Bar mapped to border */}
+          <div className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-coral to-mustard" style={{ width: `${duration ? (position/duration)*100 : 0}%`, transition: 'width 0.2s linear' }} />
         </div>
       </footer>
     );
@@ -106,73 +125,106 @@ export const PlayerBar = () => {
 
   return (
     <footer
-      className={`z-[50] flex items-center justify-between transition-all duration-300 ${
-        nowPlayingExpanded ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0 hover:bg-ink/80'
-      } cursor-pointer group`}
+      className={`fixed z-[50] bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-6xl transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+        nowPlayingExpanded ? 'opacity-0 pointer-events-none translate-y-12 scale-95' : 'opacity-100 translate-y-0 scale-100 group'
+      } cursor-pointer`}
       onClick={openOverlay}
-      style={{ 
-        gridArea: 'player', 
-        height: '84px', 
-        background: 'rgba(10, 10, 10, 0.85)', 
-        backdropFilter: 'blur(30px)', 
-        borderTop: '1px solid rgba(255,255,255,0.06)' 
-      }}
     >
-      <div className="w-full max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-        {/* Left: Info */}
-        <div className="flex items-center gap-4 w-1/3 min-w-0">
-           <div className="w-14 h-14 rounded-xl overflow-hidden shadow-xl flex-shrink-0 border border-white/5 relative">
-              <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors pointer-events-none" />
+      {/* Outer Glow Background */}
+      <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-r from-coral/30 via-mustard/15 to-black opacity-30 group-hover:opacity-60 transition-opacity duration-700 blur-2xl pointer-events-none" />
+      
+      {/* Main Glassmorphic Island */}
+      <div className="relative h-[90px] w-full rounded-[2.5rem] bg-paper/50 backdrop-blur-[40px] border border-white/5 shadow-[0_20px_60px_-15px_rgba(0,0,0,1)] flex items-center justify-between px-8 overflow-hidden group-hover:border-white/10 transition-colors">
+        
+        {/* Subtle inner highlight */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none rounded-[2.5rem]" />
+
+        {/* --- LEFT: Art & Info --- */}
+        <div className="relative z-10 flex items-center gap-5 w-1/3 min-w-0">
+           {/* Spinning Vinyl Cover Art */}
+           <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-paper flex-shrink-0 shadow-[0_0_25px_rgba(220,20,60,0.3)] group-hover:shadow-[0_0_35px_rgba(220,20,60,0.5)] transition-shadow duration-500">
+              <img 
+                src={coverUrl} 
+                alt="cover" 
+                className={`w-full h-full object-cover transition-transform duration-1000 ${isPlaying ? 'animate-spin-slow' : ''}`}
+                style={{ animationDuration: '8s' }}
+              />
+              {/* Vinyl inner hole */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-paper rounded-full shadow-inner border border-white/10" />
            </div>
+           
            <div className="min-w-0 flex-1 pr-4">
-             <div className="text-paper font-sans font-semibold truncate group-hover:text-coral transition-colors">{currentSong?.title || 'No track selected'}</div>
-             <div className="text-paper/50 font-sans text-sm truncate">{currentSong?.artist || '—'}</div>
+             <div className="text-ink font-serif italic text-lg font-bold truncate tracking-wide drop-shadow-md">
+               {currentSong?.title || 'No track selected'}
+             </div>
+             <div className="text-ink/50 font-sans text-xs font-semibold uppercase tracking-[0.2em] mt-0.5 truncate">
+               {currentSong?.artist || '—'}
+             </div>
            </div>
         </div>
 
-        {/* Center: Controls */}
-        <div className="flex flex-col items-center justify-center w-1/3" onClick={e => e.stopPropagation()}>
-           <div className="flex items-center gap-6">
-             <button onClick={prev} className="text-paper/60 hover:text-paper transition-colors hover:scale-110">
-               <SkipBack size={20} className="fill-current"/>
+        {/* --- CENTER: Controls & Progress --- */}
+        <div className="relative z-10 flex flex-col items-center justify-center w-1/3" onClick={e => e.stopPropagation()}>
+           <div className="flex items-center gap-8">
+             <button onClick={(e) => { e.stopPropagation(); prev(); }} className="text-ink/60 hover:text-coral transition-colors hover:scale-110 active:scale-95">
+               <SkipBack size={22} className="fill-current"/>
              </button>
+             
+             {/* Play Button - Emphasized with Gradient */}
              <button 
-               onClick={isPlaying ? pause : play} 
-               className="w-10 h-10 rounded-full bg-paper text-ink flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+               onClick={(e) => { e.stopPropagation(); isPlaying ? pause() : play(); }} 
+               className="w-12 h-12 rounded-full bg-gradient-to-br from-coral to-mustard text-paper flex items-center justify-center shadow-[0_0_20px_rgba(220,20,60,0.4)] hover:shadow-[0_0_30px_rgba(220,20,60,0.6)] hover:scale-110 active:scale-95 transition-all duration-300"
              >
-               {isPlaying ? <Pause size={20} className="fill-ink"/> : <Play size={20} className="fill-ink ml-0.5"/>}
+               {isPlaying ? <Pause size={24} className="fill-paper"/> : <Play size={24} className="fill-paper ml-1"/>}
              </button>
-             <button onClick={next} className="text-paper/60 hover:text-paper transition-colors hover:scale-110">
-               <SkipForward size={20} className="fill-current"/>
+             
+             <button onClick={(e) => { e.stopPropagation(); next(); }} className="text-ink/60 hover:text-coral transition-colors hover:scale-110 active:scale-95">
+               <SkipForward size={22} className="fill-current"/>
              </button>
            </div>
            
-           {/* Simple progress bar */}
-           <div className="w-full max-w-md flex items-center gap-3 mt-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-              <span className="text-[10px] font-mono text-paper/40 w-8 text-right">
+           {/* Elevated Progress Bar */}
+           <div className="w-full max-w-[360px] flex items-center gap-4 mt-3 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+              <span className="text-[10px] font-mono text-ink/40 w-9 text-right tracking-wider">
                 {position ? Math.floor(position/60)+':'+String(Math.floor(position%60)).padStart(2,'0') : '0:00'}
               </span>
-              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden cursor-pointer hover:h-2 transition-all" onClick={e => {
+              
+              <div 
+                className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden cursor-pointer hover:h-2 transition-all relative border border-white/5"
+                onClick={e => {
                   if (!duration) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   seek(((e.clientX - rect.left) / rect.width) * duration);
-              }}>
-                 <div className="h-full bg-coral rounded-full" style={{ width: `${duration ? (position/duration)*100 : 0}%` }} />
+                }}
+              >
+                 <div 
+                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-coral to-mustard rounded-full shadow-[0_0_10px_rgba(220,20,60,0.8)]" 
+                   style={{ width: `${duration ? (position/duration)*100 : 0}%`, transition: 'width 0.2s linear' }} 
+                 />
               </div>
-              <span className="text-[10px] font-mono text-paper/40 w-8">
+              
+              <span className="text-[10px] font-mono text-ink/40 w-9 tracking-wider">
                 {duration ? Math.floor(duration/60)+':'+String(Math.floor(duration%60)).padStart(2,'0') : '0:00'}
               </span>
            </div>
         </div>
 
-        {/* Right: Extra */}
-        <div className="flex items-center justify-end gap-5 w-1/3" onClick={e => e.stopPropagation()}>
-           <button onClick={toggleShuffle} className={`transition-colors hover:scale-110 ${shuffleMode !== 'none' ? 'text-coral' : 'text-paper/40 hover:text-paper'}`}>
-             <Shuffle size={18} />
+        {/* --- RIGHT: Extras --- */}
+        <div className="relative z-10 flex items-center justify-end gap-6 w-1/3" onClick={e => e.stopPropagation()}>
+           <button 
+             onClick={toggleShuffle} 
+             className={`transition-all duration-300 hover:scale-110 active:scale-95 ${shuffleMode !== 'none' ? 'text-mustard drop-shadow-[0_0_8px_rgba(255,140,0,0.5)]' : 'text-ink/40 hover:text-ink'}`}
+             title={shuffleMode === 'dumb' ? 'Normal Shuffle' : shuffleMode === 'smart' ? 'Smart Shuffle' : 'Shuffle Off'}
+           >
+             <Shuffle size={20} />
            </button>
-           <button onClick={cycleLoop} className={`transition-colors hover:scale-110 ${repeatMode !== 'none' ? 'text-coral' : 'text-paper/40 hover:text-paper'}`}>
-             <Repeat size={18} />
+           
+           <button 
+             onClick={cycleLoop} 
+             className={`transition-all duration-300 hover:scale-110 active:scale-95 ${repeatMode !== 'none' ? 'text-coral drop-shadow-[0_0_8px_rgba(220,20,60,0.5)]' : 'text-ink/40 hover:text-ink'}`}
+             title={repeatMode === 'one' ? 'Repeat One' : repeatMode === 'all' ? 'Repeat All' : 'Repeat Off'}
+           >
+             <Repeat size={20} />
            </button>
         </div>
       </div>

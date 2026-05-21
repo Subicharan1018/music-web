@@ -8,6 +8,7 @@ import { paletteService } from '../../services/PaletteService';
 import { usePlayAction } from '../../hooks/usePlayAction';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
+import { Play } from 'lucide-react';
 
 export const AlbumCard = ({ album }) => {
   const [accent, setAccent] = useState(null);
@@ -53,12 +54,12 @@ export const AlbumCard = ({ album }) => {
   return (
     <div 
       ref={cardRef}
-      className="reveal-item group flex flex-col gap-2 cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 relative"
+      className="reveal-item group flex flex-col gap-3 cursor-pointer transition-all duration-300 hover:-translate-y-2 relative"
       style={style}
       onClick={() => navigate(`/album/${album.id}`)}
       onContextMenu={handleContextMenu}
     >
-      <div className="aspect-square rounded-md overflow-hidden bg-ink/5 shadow-sm relative">
+      <div className="aspect-square rounded-xl overflow-hidden bg-white/5 shadow-lg relative ring-1 ring-white/10 group-hover:ring-[var(--card-accent,rgba(255,255,255,0.3))] group-hover:shadow-[0_8px_32px_var(--card-accent,rgba(0,0,0,0.5))] transition-all duration-300">
         <img 
           src={coverUrl} 
           alt={album.name || album.title}
@@ -67,18 +68,25 @@ export const AlbumCard = ({ album }) => {
           onLoad={handleImageLoad}
           loading="lazy"
         />
-        {/* Simple hover overlay indicating the accent color if available. */}
-        <div className="absolute inset-0 border border-transparent group-hover:border-[var(--card-accent)]/50 transition-colors pointer-events-none rounded-md" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
+          <button 
+            onClick={handlePlay}
+            className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-coral hover:scale-110 hover:shadow-[0_0_20px_rgba(220,20,60,0.6)] transition-all duration-200"
+          >
+            <Play size={24} className="ml-1 fill-current" />
+          </button>
+        </div>
       </div>
-      <div className="flex flex-col">
-        <span className="font-sans text-sm font-semibold text-ink truncate">
+      <div className="flex flex-col px-1">
+        <span className="font-sans text-sm font-bold text-white truncate drop-shadow-sm transition-colors group-hover:text-[var(--card-accent,white)]">
           {album.name || album.title}
         </span>
-        <span className="font-sans text-xs text-ink-mute truncate">
+        <span className="font-sans text-xs text-white/50 truncate font-medium mt-0.5">
           {album.artist}
         </span>
         {album.year && (
-          <span className="font-mono text-[10px] text-ink-faint mt-0.5">
+          <span className="font-mono text-[10px] text-white/30 mt-1 uppercase tracking-widest">
             {album.year}
           </span>
         )}
@@ -87,19 +95,19 @@ export const AlbumCard = ({ album }) => {
       {showMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-paper border border-ink/10 rounded-md shadow-lg py-1 min-w-[140px] text-sm">
-            <button className="w-full text-left px-4 py-2 hover:bg-ink/5" onClick={handlePlay}>Play</button>
-            <button className="w-full text-left px-4 py-2 hover:bg-ink/5" onClick={(e) => {
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] py-2 min-w-[160px] text-sm text-white overflow-hidden">
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={handlePlay}>Play Album</button>
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
               console.log('Add to Queue clicked');
             }}>Add to Queue</button>
-            <button className="w-full text-left px-4 py-2 hover:bg-ink/5" onClick={(e) => {
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium" onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
               if (album.artistId) navigate(`/artist/${album.artistId}`);
             }}>Go to Artist</button>
-            <button className="w-full text-left px-4 py-2 hover:bg-ink/5" onClick={(e) => {
+            <button className="w-full text-left px-5 py-2.5 hover:bg-white/10 transition-colors font-medium text-coral hover:bg-coral/10" onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
             }}>Add to Playlist</button>

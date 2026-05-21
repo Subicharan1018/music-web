@@ -269,7 +269,7 @@ export const usePlayerStore = create((set, get) => ({
     const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
     const pool = songs || originalQueue;
 
-    const maxQueue = 50;
+    const maxQueue = 500;
     const localFallback = () => applyShuffleAlgorithm(pool, affinityDataSafe, {
       maxQueue,
       avoidRecent: true,

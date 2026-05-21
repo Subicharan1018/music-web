@@ -3,7 +3,7 @@
  * NaviVibe-specific playlist view — MusicPortfolio aesthetic.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -44,6 +44,22 @@ export const PlaylistMusicPortfolio = ({
 }) => {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [activeBg, setActiveBg] = useState(defaultBackground);
+  const [visibleCount, setVisibleCount] = useState(50);
+  const observerRef = useRef(null);
+
+  const loadMoreRef = useCallback((node) => {
+    if (observerRef.current) observerRef.current.disconnect();
+    if (node) {
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => Math.min(c + 50, songs.length));
+        }
+      }, { rootMargin: '400px' });
+      observerRef.current.observe(node);
+    }
+  }, [songs.length]);
+
+  const visibleSongs = songs.slice(0, visibleCount);
 
   // Cover art URL builder
   const getCoverUrl = useCallback((song) => {
@@ -135,11 +151,11 @@ export const PlaylistMusicPortfolio = ({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={songs.map((s, i) => `pmp-${s.id}-${i}`)}
+            items={visibleSongs.map((s, i) => `pmp-${s.id}-${i}`)}
             strategy={verticalListSortingStrategy}
           >
             <ul className="w-full" role="list">
-              {songs.map((song, index) => (
+              {visibleSongs.map((song, index) => (
                 <PlaylistRow
                   key={`pmp-${song.id}-${index}`}
                   song={song}
@@ -155,6 +171,11 @@ export const PlaylistMusicPortfolio = ({
                   coverArtUrl={getCoverUrl(song)}
                 />
               ))}
+              {visibleCount < songs.length && (
+                <li ref={loadMoreRef} className="py-8 flex justify-center items-center text-ink/40 font-mono text-xs tracking-widest uppercase">
+                  Loading more...
+                </li>
+              )}
             </ul>
           </SortableContext>
         </DndContext>

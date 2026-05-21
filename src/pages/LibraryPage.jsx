@@ -84,8 +84,9 @@ export const LibraryPage = () => {
   const renderSection = (title, items, isHorizontal = false) => {
     return (
       <div className="flex flex-col gap-4 mb-12 reveal-item">
-        <div className="flex justify-between items-end border-b border-ink/10 pb-2">
-          <div className="font-sans text-[13px] font-medium text-ink-mute uppercase tracking-widest">
+        <div className="flex justify-between items-end border-b border-white/10 pb-3 mb-2 relative">
+          <div className="absolute bottom-[-1px] left-0 w-24 h-[1px] bg-gradient-to-r from-coral to-transparent" />
+          <div className="font-sans text-[13px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
             {title}
           </div>
         </div>
@@ -127,8 +128,9 @@ export const LibraryPage = () => {
       {/* Nº 00 · RECOMMENDED FOR YOU — only after 5+ plays */}
       {hasEnoughPlays && recommendations.length > 0 && (
         <div className="mb-12 reveal-item">
-          <div className="flex justify-between items-end border-b border-ink/10 pb-2 mb-6">
-            <div className="font-sans text-[13px] font-medium text-ink-mute uppercase tracking-widest">
+          <div className="flex justify-between items-end border-b border-white/10 pb-3 mb-6 relative">
+            <div className="absolute bottom-[-1px] left-0 w-32 h-[1px] bg-gradient-to-r from-coral to-transparent shadow-[0_0_8px_rgba(220,20,60,0.8)]" />
+            <div className="font-sans text-[13px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-coral to-mustard uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(220,20,60,0.4)]">
               Nº 00 · Recommended For You
             </div>
           </div>
