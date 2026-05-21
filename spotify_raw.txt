@@ -1,0 +1,112 @@
+<USER_REQUEST>
+make full theme black and crimson and orange keep the sound the wave same color and make aishuffle work , have console to check if the smartshuffle is sending request , use the graphify , frontend-design,web-design-guidelines and make the ai shuffle to be store in cookie and mini player in not working and now playing screen is also not working {You are given a task to integrate an existing React component in the codebase
+
+The codebase should support:
+- shadcn project structure  
+- Tailwind CSS
+- Typescript
+
+If it doesn't, provide instructions on how to setup project via shadcn CLI, install Tailwind or Typescript.
+
+Determine the default path for components and styles. 
+If default path for components is not /components/ui, provide instructions on why it's important to create this folder
+Copy-paste this component to /components/ui folder:
+```tsx
+spotify-card.tsx
+"use client"
+import { useState, useEffect, useRef } from 'react';
+import { ChevronRight, Play, Pause, Volume2, Heart, Plus, MoreHorizontal, SkipBack, SkipForward } from 'lucide-react';
+
+interface Song {
+  title: string;
+  artists: string;
+  duration: number;
+  albumArt: string;
+}
+
+interface SpotifyCardProps {
+  songs: Song[];
+}
+
+export function SpotifyCard({ songs }: SpotifyCardProps) {
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [animationProgress, setAnimationProgress] = useState<number>(0);
+  const [isLiked, setIsLiked] = useState<boolean>(false);
+  const [volume, setVolume] = useState<number>(75);
+  const [isDraggingVolume, setIsDraggingVolume] = useState<boolean>(false);
+  const [isDraggingProgress, setIsDraggingProgress] = useState<boolean>(false);
+  const [showContextMenu, setShowContextMenu] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [currentSongIndex, setCurrentSongIndex] = useState<number>(0);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>(
+<truncated 24259 bytes>
+{
+      title: "Finding Her",
+      artists: "Kushagra, Bharath, Saaheal",
+      duration: 207,
+      albumArt:
+        "https://i.scdn.co/image/ab67616d00001e0283141000ee8ce3b893a0b425",
+    },
+    {
+      title: "Daylight",
+      artists: "David Kushner",
+      duration: 226,
+      albumArt:
+        "https://i.scdn.co/image/ab67616d0000b273e40c514edddb844439af6201",
+    },
+    {
+      title: "Heat Waves",
+      artists: "Glass Animals",
+      duration: 237,
+      albumArt:
+        "https://i.scdn.co/image/ab67616d0000b273712701c5e263efc8726b1464",
+    },
+    {
+      title: "Perfect",
+      artists: "Ed Sheeran",
+      duration: 263,
+      albumArt:
+        "https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96",
+    },
+  ];
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-transparent text-white">
+      <main className="w-screen h-screen flex justify-center items-center">
+        <SpotifyCard songs={songs} />
+      </main>
+    </div>
+  );
+}
+
+export default {
+  Demo,
+};
+
+```
+
+Install NPM dependencies:
+```bash
+lucide-react
+```
+
+Implementation Guidelines
+ 1. Analyze the component structure and identify all required dependencies
+ 2. Review the component's argumens and state
+ 3. Identify any required context providers or hooks and install them
+ 4. Questions to Ask
+ - What data/props will be passed to this component?
+ - Are there any specific state management requirements?
+ - Are there any required assets (images, icons, etc.)?
+ - What is the expected responsive behavior?
+ - What is the best place to use this component in the app?
+
+Steps to integrate
+ 0. Copy paste all the code above in the correct directories
+ 1. Install external dependencies
+ 2. Fill image assets with Unsplash stock images you know exist
+ 3. Use lucide-react icons for svgs or logos if component requires them} , use this for the now playing screen
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T08:21:38+05:30.
+</ADDITIONAL_METADATA>

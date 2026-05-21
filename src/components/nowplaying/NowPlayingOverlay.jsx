@@ -1,10 +1,18 @@
 /**
  * NowPlayingOverlay.jsx
- * Full-screen now playing view with lyrics and controls.
+ * Full-screen now playing view. Phase 6.5 redesign — luxury editorial direction.
+ *
+ * Skill directives applied (frontend-design SKILL.md):
+ *   - Bold direction: luxury editorial — tactile, material, physical
+ *   - Differentiation: SVG vinyl groove ring with CSS animation-play-state
+ *   - Typography: Atelier Zero serif/mono — non-generic, already distinctive
+ *   - Motion: ONE orchestrated GSAP stagger on open only (not on song change)
+ *   - Spatial: two-column asymmetric desktop, stacked mobile
+ *   - Depth: FluidBackground as atmosphere + bg-ink/50 dark overlay + bottom gradient
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Heart, HeartOff, Repeat, Shuffle, X } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { SkipBack, SkipForward, Play, Pause, Heart, HeartOff, Repeat, X } from 'lucide-react';
 import { usePlayer } from '../../hooks/usePlayer';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { useUIStore } from '../../store/uiStore';
@@ -16,10 +24,37 @@ import { AddToPlaylistDialog } from '../playlists/AddToPlaylistDialog';
 import { FluidBackground } from './FluidBackground';
 import { AIShuffleButton } from '../shared/AIShuffleButton';
 import { gsap } from '../../lib/gsap';
-import { useRef } from 'react';
+import { useAIShuffleStore } from '../../store/aiShuffleStore';
+import { useServerHealth } from '../../hooks/useServerHealth';
+import { startedAtFormatted } from '../../services/ShuffleApiService';
+import { usePlayerStore } from '../../store/playerStore';
+import { SpotifyCard } from '../ui/spotify-card';
 
 const FALLBACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%23e6dcc4"/><circle cx="200" cy="200" r="120" fill="%23d3c6a5"/><circle cx="200" cy="200" r="18" fill="%23b9aa87"/></svg>';
 
+// ── VinylRing ─────────────────────────────────────────────────────────────────
+// Positioned behind the album art. CSS vinyl-spin class from index.css.
+// z-0 behind img (z-10). prefers-reduced-motion handled in CSS.
+const VinylRing = ({ isPlaying }) => (
+  <div
+    className={`vinyl-spin absolute inset-[-28px] rounded-full pointer-events-none select-none ${isPlaying ? '' : 'paused'}`}
+    aria-hidden="true"
+  >
+    <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Groove rings */}
+      {[180, 166, 152, 138, 124, 110].map((r) => (
+        <circle key={r} cx="200" cy="200" r={r} fill="none" stroke="rgba(239,231,210,0.06)" strokeWidth="1" />
+      ))}
+      {/* Outer label ring */}
+      <circle cx="200" cy="200" r="188" fill="none" stroke="rgba(239,231,210,0.10)" strokeWidth="2" />
+      {/* Inner spindle hole hint */}
+      <circle cx="200" cy="200" r="16" fill="rgba(21,20,15,0.4)" />
+      <circle cx="200" cy="200" r="5" fill="rgba(239,231,210,0.15)" />
+    </svg>
+  </div>
+);
+
+// ── NowPlayingOverlay ─────────────────────────────────────────────────────────
 export const NowPlayingOverlay = () => {
   const { nowPlayingExpanded, setNowPlayingExpanded } = useUIStore();
   const client = useSubsonic();
@@ -32,19 +67,24 @@ export const NowPlayingOverlay = () => {
     pause,
     next,
     prev,
-    seek,
     shuffleMode,
     enableSmartShuffle,
     enableDumbShuffle,
     disableShuffle,
     repeatMode,
-    setRepeatMode
+    setRepeatMode,
   } = usePlayer();
 
+  const queueSource    = usePlayerStore((s) => s.queueSource);
   const { toggleStarSong, isSongStarred } = useLibraryStore();
   const [isAddOpen, setIsAddOpen] = useState(false);
 
-  const { lines, currentLineIndex, isSynced, isLoading, error, handleScroll, registerLineRef } = useLyrics(
+  // AI shuffle server
+  const { isConfigured, isHealthy, health } = useServerHealth();
+  const sessionStatus   = useAIShuffleStore((s) => s.sessionStatus);
+  const resetSession    = useAIShuffleStore((s) => s.resetSession);
+
+  const { lines, currentLineIndex, isSynced, isLoading: lyricsLoading, error: lyricsError, handleScroll, registerLineRef } = useLyrics(
     currentSong,
     (position || 0) * 1000
   );
@@ -55,52 +95,50 @@ export const NowPlayingOverlay = () => {
   }, [client, currentSong]);
 
   const isStarred = currentSong ? isSongStarred(currentSong.id) : false;
-  const loopMode = repeatMode === 'none' ? 'off' : repeatMode;
+  const loopMode  = repeatMode === 'none' ? 'off' : repeatMode;
 
   const toggleShuffle = () => {
-    if (shuffleMode === 'none') {
-      enableDumbShuffle();
-    } else if (shuffleMode === 'dumb') {
-      void enableSmartShuffle(queue);
-    } else {
-      disableShuffle();
-    }
+    if (shuffleMode === 'none')  enableDumbShuffle();
+    else if (shuffleMode === 'dumb') void enableSmartShuffle(queue);
+    else disableShuffle();
   };
 
   const cycleLoop = () => {
-    if (repeatMode === 'none') setRepeatMode('all');
+    if (repeatMode === 'none')  setRepeatMode('all');
     else if (repeatMode === 'all') setRepeatMode('one');
     else setRepeatMode('none');
   };
 
   const closeOverlay = () => setNowPlayingExpanded(false);
 
+  // Keyboard shortcut
   useEffect(() => {
     if (!nowPlayingExpanded) return;
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') closeOverlay();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nowPlayingExpanded]);
+    const onKey = (e) => { if (e.key === 'Escape') closeOverlay(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [nowPlayingExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // GSAP stagger — fires on `nowPlayingExpanded` change ONLY.
+  // Intentionally NOT in [nowPlayingExpanded, currentSong?.id]: animating on
+  // song change while the overlay is open would be jarring.
   const containerRef = useRef(null);
-
   useEffect(() => {
     if (!nowPlayingExpanded || !containerRef.current) return;
-    
     const ctx = gsap.context(() => {
-      gsap.from('.stagger-reveal', {
-        y: 40,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.1,
-        ease: 'power3.out'
-      });
+      gsap.fromTo(
+        '.np-reveal',
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, stagger: 0.08, ease: 'power3.out', clearProps: 'transform,opacity' }
+      );
     }, containerRef);
-    
     return () => ctx.revert();
-  }, [nowPlayingExpanded, currentSong?.id]); // Re-animate on song change too if expanded? No, only on expand. Actually, maybe on expand. We'll leave it as [nowPlayingExpanded].
+  }, [nowPlayingExpanded]); // intentionally dep on expand only
+
+  // Handle session reset — refetch immediately after reset
+  const handleResetSession = async () => {
+    await resetSession(currentSong?.title);
+  };
 
   return (
     <div
@@ -110,167 +148,130 @@ export const NowPlayingOverlay = () => {
       }`}
       aria-hidden={!nowPlayingExpanded}
     >
+      {/* Fluid background — click to close */}
       <div className="absolute inset-0" onClick={closeOverlay}>
         <FluidBackground song={currentSong} />
       </div>
 
-      <div className="relative z-10 h-full w-full px-6 sm:px-10 pb-24 pt-20" onClick={(event) => event.stopPropagation()}>
-        <button
-          type="button"
-          onClick={closeOverlay}
-          className="absolute top-6 right-6 text-paper/70 hover:text-paper transition-colors"
-          aria-label="Close now playing"
-        >
-          <X size={26} />
-        </button>
+      {/* Server health strip — desktop only (hidden md:flex avoids mobile overlap with close btn) */}
+      {isConfigured && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 font-mono text-[9px] text-paper/30 uppercase tracking-[0.15em] z-20 pointer-events-none">
+          <span className={`w-1 h-1 rounded-full ${isHealthy ? 'bg-paper/50' : 'bg-coral/60'}`} />
+          {isHealthy
+            ? `AI SERVER · ONLINE${health?.librarySize ? ` · ${health.librarySize.toLocaleString()} SONGS` : ''}`
+            : 'AI SERVER · OFFLINE'}
+        </div>
+      )}
 
-        <div className="h-full w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-10">
-          <section className="flex flex-col gap-6">
-            <div className="flex flex-col items-center lg:items-start gap-6">
-              <div className="stagger-reveal w-full max-w-sm rounded-xl shadow-2xl overflow-hidden bg-ink/20">
-                <img
-                  src={coverUrl}
-                  alt={currentSong?.title || 'Album cover'}
-                  className="w-full h-full object-cover"
-                  crossOrigin="anonymous"
-                />
-              </div>
+      {/* Mobile health dot (small, top-center, no text) */}
+      {isConfigured && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex md:hidden items-center z-20 pointer-events-none">
+          <span className={`w-1.5 h-1.5 rounded-full ${isHealthy ? 'bg-green-400/60' : 'bg-coral/60'}`} />
+        </div>
+      )}
 
-              <div className="stagger-reveal text-center lg:text-left">
-                <h1 className="font-serif text-4xl italic text-paper leading-tight">
-                  {currentSong?.title || 'No track selected'}
-                </h1>
-                <div className="font-sans text-lg text-paper/70">
-                  {currentSong?.artist || '—'}
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={closeOverlay}
+        className="absolute top-5 right-6 text-paper/60 hover:text-paper transition-colors z-20"
+        aria-label="Close now playing"
+      >
+        <X size={24} />
+      </button>
+
+      {/* Content — stops click propagation so backdrop click still closes */}
+      <div
+        className="relative z-10 h-full w-full px-6 sm:px-10 pb-24 pt-16"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-full w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 lg:gap-12">
+
+          {/* ── LEFT PANEL: Spotify Card + Session info ─────────────────────────────── */}
+          <section className="np-reveal flex flex-col justify-center">
+            
+            <SpotifyCard />
+
+            {/* AI source label / Session strip — bottom of left panel */}
+            <div className="mt-8 flex flex-col items-center gap-2">
+              {queueSource === 'cold_start' && (
+                <span className="font-mono text-[9px] text-coral/80 uppercase tracking-[0.2em] block">
+                  AI · DISCOVERY
+                </span>
+              )}
+              {queueSource === 'model' && (
+                <span className="font-mono text-[9px] text-paper/40 uppercase tracking-[0.2em] block">
+                  AI · RECOMMENDED
+                </span>
+              )}
+
+              {isConfigured && sessionStatus && (
+                <div className="flex items-center gap-4 font-mono text-[9px] text-paper/30 uppercase tracking-[0.15em]">
+                  <span>
+                    SESSION · {sessionStatus.songCount} SONGS
+                    {sessionStatus.startedAt ? ` · ${startedAtFormatted(sessionStatus.startedAt)}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetSession}
+                    className="hover:text-paper/60 transition-colors underline underline-offset-2"
+                  >
+                    RESET
+                  </button>
                 </div>
-                <div className="font-mono text-sm text-paper/50 mt-1">
-                  {currentSong?.album ? currentSong.album : 'Unknown album'}
-                  {currentSong?.year ? ` · ${currentSong.year}` : ''}
-                </div>
-              </div>
-            </div>
-
-            <div className="stagger-reveal flex items-center justify-center lg:justify-start gap-6">
-              <button
-                type="button"
-                onClick={prev}
-                className="text-paper/70 hover:text-paper transition-colors"
-                aria-label="Previous track"
-              >
-                <ChevronLeft size={30} />
-              </button>
-              <button
-                type="button"
-                onClick={isPlaying ? pause : play}
-                className="w-14 h-14 rounded-full bg-paper/90 text-ink hover:bg-paper transition-colors flex items-center justify-center"
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? '❚❚' : '▶'}
-              </button>
-              <button
-                type="button"
-                onClick={next}
-                className="text-paper/70 hover:text-paper transition-colors"
-                aria-label="Next track"
-              >
-                <ChevronRight size={30} />
-              </button>
-            </div>
-
-            <div className="stagger-reveal bg-paper/10 border border-paper/10 rounded-xl px-4 py-3">
-              <ProgressBar />
-            </div>
-
-            <div className="stagger-reveal flex flex-wrap items-center gap-4">
-              <VolumeSlider className="text-paper" />
-              <AIShuffleButton className="text-paper hover:text-paper" />
-              <button
-                type="button"
-                onClick={cycleLoop}
-                className={`flex items-center gap-2 text-sm font-sans ${
-                  loopMode === 'off' ? 'text-paper/60' : 'text-paper'
-                }`}
-              >
-                <Repeat size={18} />
-                Repeat
-              </button>
-            </div>
-
-            <div className="stagger-reveal flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!client || !currentSong) return;
-                  toggleStarSong(client, currentSong);
-                }}
-                className="flex items-center gap-2 text-paper/70 hover:text-paper transition-colors"
-                disabled={!currentSong}
-              >
-                {isStarred ? <HeartOff size={18} /> : <Heart size={18} />}
-                {isStarred ? 'Unfavorite' : 'Favorite'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsAddOpen(true)}
-                className="px-4 py-2 rounded-full bg-paper/90 text-ink text-sm font-sans hover:bg-paper transition-colors"
-                disabled={!currentSong}
-              >
-                Add to playlist
-              </button>
+              )}
             </div>
           </section>
 
-          <section className="stagger-reveal flex flex-col bg-ink/20 border border-paper/10 rounded-2xl p-6 overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
+          {/* ── RIGHT PANEL: lyrics ────────────────────────────────────── */}
+          <section className="np-reveal flex flex-col bg-ink/20 border border-paper/10 rounded-2xl p-6 overflow-hidden">
+            <div className="flex items-center justify-between mb-5">
               <h2 className="font-serif text-2xl text-paper">Lyrics</h2>
-              {isSynced ? (
-                <span className="text-paper/50 text-xs font-mono">Synced</span>
-              ) : null}
+              {isSynced && (
+                <span className="text-paper/40 text-[10px] font-mono uppercase tracking-widest">Synced</span>
+              )}
             </div>
 
             <div
               className="flex-1 overflow-y-auto no-scrollbar scroll-smooth pr-2"
               onScroll={handleScroll}
             >
-              {isLoading ? (
-                <div className="flex flex-col gap-3">
-                  {[0, 1, 2].map((idx) => (
-                    <div key={idx} className="h-5 w-3/4 rounded bg-paper/10 animate-shimmer" />
+              {lyricsLoading ? (
+                <div className="flex flex-col gap-4 mt-2">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-5 rounded bg-paper/10 animate-pulse" style={{ width: `${70 - i * 10}%` }} />
                   ))}
                 </div>
-              ) : error ? (
-                <div className="font-serif italic text-paper/40 text-center">{error}</div>
+              ) : lyricsError ? (
+                <div className="font-serif italic text-2xl text-paper/25 text-center mt-16">{lyricsError}</div>
               ) : lines.length === 0 ? (
-                <div className="font-serif italic text-paper/30 text-center">No lyrics available</div>
+                <div className="font-serif italic text-2xl text-paper/25 text-center mt-16">No lyrics available</div>
               ) : (
                 <div className="flex flex-col gap-3">
                   {lines.map((line, index) => {
                     const isCurrent = isSynced && index === currentLineIndex;
-                    const isPast = isSynced && currentLineIndex !== -1 && index < currentLineIndex;
-                    const isFuture = isSynced && currentLineIndex !== -1 && index > currentLineIndex;
+                    const isPast    = isSynced && currentLineIndex !== -1 && index < currentLineIndex;
+                    const isFuture  = isSynced && currentLineIndex !== -1 && index > currentLineIndex;
+
                     const textClass = isCurrent
-                      ? 'text-paper text-xl font-semibold scale-105'
+                      ? 'font-serif text-xl text-paper font-semibold scale-105 origin-left'
                       : isPast
-                        ? 'text-paper/30 text-base'
+                        ? 'font-sans text-base text-paper/25'
                         : isFuture
-                          ? 'text-paper/50 text-base'
-                          : 'text-paper/70 text-base';
+                          ? 'font-sans text-base text-paper/50'
+                          : 'font-sans text-base text-paper/70';
 
                     return (
                       <button
-                        key={`${line.time || 'plain'}-${index}`}
+                        key={`${line.time ?? 'plain'}-${index}`}
                         type="button"
                         ref={registerLineRef(index)}
                         onClick={() => {
                           if (line.time == null) return;
-                          const seconds = line.time / 1000;
-                          if (!Number.isNaN(seconds)) {
-                            const target = Math.max(0, seconds);
-                            seek(target);
-                          }
+                          const s = line.time / 1000;
+                          if (!Number.isNaN(s)) seek(Math.max(0, s));
                         }}
-                        className={`text-left transition-all duration-300 origin-left ${textClass}`}
+                        className={`text-left transition-all duration-300 ${textClass}`}
                         data-line-index={index}
                         disabled={line.time == null}
                       >

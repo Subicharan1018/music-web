@@ -9,7 +9,8 @@ import { create } from 'zustand';
 import AudioEngine from '../services/AudioEngine';
 import ScrobbleService from '../services/ScrobbleService';
 import { applyShuffleAlgorithm } from '../services/ShuffleService';
-import { ShuffleApiService, mapRecommendationsToSongs } from '../services/ShuffleApiService';
+import { useAIShuffleStore } from './aiShuffleStore';
+import { mapRecommendationsToSongs } from '../utils/mapRecommendations';
 import { useAffinityStore } from './affinityStore';
 import { useSettingsStore } from './settingsStore';
 
@@ -50,6 +51,9 @@ export const usePlayerStore = create((set, get) => ({
   originalQueue: initialState.originalQueue || [],
   repeatMode: initialState.repeatMode,
   gainValue: initialState.gainValue || 0.0,
+  // 'model' | 'cold_start' | 'fallback' | 'legacy' | 'local' | null
+  // Drives the AI label in NowPlayingOverlay. Always defined after shuffle.
+  queueSource: null,
   
   audioEngine: null,
   scrobbleService: null,
@@ -216,11 +220,14 @@ export const usePlayerStore = create((set, get) => ({
 
   setGainValue: (gainValue) => set({ gainValue }),
 
-  setQueue: (newQueue) => {
+  setQueue: (newQueue, startIndex = 0) => {
+    const clampedIndex = Math.min(Math.max(0, startIndex), Math.max(0, newQueue.length - 1));
     set({ 
       queue: newQueue, 
-      currentIndex: 0, 
-      currentSong: newQueue[0] || null
+      currentIndex: clampedIndex, 
+      currentSong: newQueue[clampedIndex] || null,
+      isPlaying: false,
+      position: 0
     });
   },
 
@@ -262,58 +269,56 @@ export const usePlayerStore = create((set, get) => ({
     const originalQueue = state.shuffleMode === 'none' ? [...currentQueue] : state.originalQueue;
     const pool = songs || originalQueue;
 
-    const maxQueue = 50;
+    const maxQueue = 500;
     const localFallback = () => applyShuffleAlgorithm(pool, affinityDataSafe, {
       maxQueue,
       avoidRecent: true,
       seedSong: currentSong
     });
 
-    let shuffled = null;
-    const shuffleUrl = useSettingsStore.getState().localShuffleUrl;
-    if (shuffleUrl) {
+    let shuffled  = null;
+    let queueSource = 'local';
+
+    // ── Priority 1: AI shuffle server ─────────────────────────────────────
+    const aiStore = useAIShuffleStore.getState();
+    if (aiStore.isConfigured && aiStore.isHealthy) {
       try {
-        const service = new ShuffleApiService(shuffleUrl);
-        const count = Math.min(15, pool.length);
-        const recommendations = await service.getNext({
-          currentSong,
-          playlistName,
-          candidates: pool,
-          count
+        await aiStore.fetchNext({
+          current:  currentSong?.title || '',
+          artist:   currentSong?.artist || '',
+          playlist: playlistName || '',
+          count:    10,
         });
+        const freshStore = useAIShuffleStore.getState();
+        const mapped = mapRecommendationsToSongs(freshStore.recommendedQueue, pool);
 
-        const ordered = mapRecommendationsToSongs(recommendations, pool);
-        const usedIds = new Set(ordered.map((song) => song.id));
-        const seedSong = currentSong && pool.find((song) => song.id === currentSong.id) ? currentSong : null;
+        if (mapped.length >= 3) {
+          const usedIds = new Set(mapped.map((s) => s.id));
+          const seedSong = currentSong && pool.find((s) => s.id === currentSong.id) ? currentSong : null;
 
-        const result = [];
-        if (seedSong) {
-          result.push(seedSong);
-          usedIds.add(seedSong.id);
+          const result = [];
+          if (seedSong) { result.push(seedSong); usedIds.add(seedSong.id); }
+          mapped.forEach((song) => { if (!usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); } });
+
+          const remainingPool = pool.filter((s) => !usedIds.has(s.id));
+          const filler = applyShuffleAlgorithm(remainingPool, affinityDataSafe, {
+            maxQueue: Math.max(0, maxQueue - result.length),
+            avoidRecent: true,
+            seedSong: null
+          });
+
+          shuffled    = [...result, ...filler].slice(0, maxQueue);
+          queueSource = freshStore.queueSource || 'model';
         }
-
-        ordered.forEach((song) => {
-          if (!usedIds.has(song.id)) {
-            result.push(song);
-            usedIds.add(song.id);
-          }
-        });
-
-        const remainingPool = pool.filter((song) => !usedIds.has(song.id));
-        const filler = applyShuffleAlgorithm(remainingPool, affinityData, {
-          maxQueue: Math.max(0, maxQueue - result.length),
-          avoidRecent: true,
-          seedSong: null
-        });
-
-        shuffled = [...result, ...filler].slice(0, maxQueue);
-      } catch (error) {
-        shuffled = null;
+      } catch {
+        // Server unreachable — fall through to local
       }
     }
 
+    // ── Priority 2: local applyShuffleAlgorithm (always available) ────────
     if (!shuffled || shuffled.length === 0) {
-      shuffled = localFallback();
+      shuffled    = localFallback();
+      queueSource = 'local';
     }
 
     set({
@@ -321,7 +326,8 @@ export const usePlayerStore = create((set, get) => ({
       isShuffled: true,
       originalQueue,
       queue: shuffled,
-      currentIndex: 0, // seedSong is at index 0
+      queueSource,
+      currentIndex: 0,
       currentSong: shuffled[0] || null
     });
   },

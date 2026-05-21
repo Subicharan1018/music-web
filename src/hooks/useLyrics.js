@@ -29,10 +29,15 @@ export const useLyrics = (song, positionMs) => {
 
   useEffect(() => {
     if (!song?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLines([]);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSynced(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentLineIndex(-1);
       lastSongIdRef.current = null;
       return;
@@ -74,6 +79,7 @@ export const useLyrics = (song, positionMs) => {
 
   useEffect(() => {
     if (!isSynced || !lines.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentLineIndex(-1);
       return;
     }

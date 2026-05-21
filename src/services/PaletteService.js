@@ -9,6 +9,9 @@ export class PaletteService {
   constructor(maxSize = 50) {
     this.maxSize = maxSize;
     this.cache = new Map();
+    // RC-04: In-flight promise deduplication. Prevents concurrent extractions
+    // for the same URL from racing and resolving in wrong order.
+    this._pending = new Map();
     this.fallback = {
       primary: '#ed6f5c',
       secondary: '#e9b94a',
@@ -27,7 +30,12 @@ export class PaletteService {
       return value;
     }
 
-    return new Promise((resolve) => {
+    // RC-04: Return in-flight promise instead of starting a competing extraction
+    if (this._pending.has(coverArtUrl)) {
+      return this._pending.get(coverArtUrl);
+    }
+
+    const promise = new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
@@ -65,12 +73,19 @@ export class PaletteService {
       };
 
       img.onerror = () => {
+        this._pending.delete(coverArtUrl);
         this._setToCache(coverArtUrl, this.fallback);
         resolve(this.fallback);
       };
 
       img.src = coverArtUrl;
+    }).then(result => {
+      this._pending.delete(coverArtUrl);
+      return result;
     });
+
+    this._pending.set(coverArtUrl, promise);
+    return promise;
   }
 
   _setToCache(key, value) {
@@ -83,6 +98,7 @@ export class PaletteService {
 
   clear() {
     this.cache.clear();
+    this._pending.clear();
   }
 }
 

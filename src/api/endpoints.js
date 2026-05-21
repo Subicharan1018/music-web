@@ -28,5 +28,7 @@ export const ENDPOINTS = {
   GET_LYRICS_BY_SONG_ID: 'getLyricsBySongId.view',
   STREAM: 'stream.view',
   GET_COVER_ART: 'getCoverArt.view',
-  SCROBBLE: 'scrobble.view'
+  SCROBBLE: 'scrobble.view',
+  GET_SONGS_BY_GENRE: 'getSongsByGenre.view',
+  GET_TOP_SONGS: 'getTopSongs.view',
 };

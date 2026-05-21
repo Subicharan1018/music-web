@@ -490,7 +490,10 @@ function Disc({ layers, isPlaying, isZoomed, trackKey, direction, onZoomToggle, 
         {layers.map((l, i) => {
           const isNewest = i === layers.length - 1
           const cls = isNewest ? (l.dir ? 'cover cover-enter' : 'cover') : 'cover cover-exit'
-          return <img key={l.id} src={l.track.cover} alt={`${l.track.title} — ${l.track.artist}`} className={cls} draggable={false} />
+          // Key on id + track id: forces remount when song changes.
+          // Prevents stale cover when two songs share the same fallback URL.
+          const coverSrc = l.track.cover || null;
+          return <img key={`disc-${l.id}-${l.track.id ?? l.track.title}`} src={coverSrc} alt={`${l.track.title} — ${l.track.artist}`} className={cls} draggable={false} onError={(e) => { e.currentTarget.src = FALLBACK_TRACK.cover; }} />
         })}
       </div>
       {showExpandHint ? (
@@ -537,8 +540,16 @@ export function MusicPlayer({ tracks, crossOrigin, playerOverride, onExpand }) {
   const player = playerOverride || useAudioPlayer(safeTracks)
   const [isZoomed, setIsZoomed] = useState(false)
 
-  const [layers, setLayers] = useState(() => [{ id: 0, track: safeTracks[0], dir: null }])
-  const lastIndex = useRef(0)
+  // Initialise from playerOverride.currentTrack so the correct cover shows
+  // immediately on mount (before any index change fires the layers effect).
+  const initialTrack = (() => {
+    const t = playerOverride?.currentTrack ?? safeTracks[0]
+    // Guard null cover — prevents broken-image requests on first render
+    if (t && !t.cover) return { ...t, cover: FALLBACK_TRACK.cover }
+    return t
+  })()
+  const [layers, setLayers] = useState(() => [{ id: 0, track: initialTrack, dir: null }])
+  const lastIndex = useRef(playerOverride?.state?.currentIndex ?? 0)
   const idRef = useRef(1)
 
   useEffect(() => {

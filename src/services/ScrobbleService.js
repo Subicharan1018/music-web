@@ -1,9 +1,17 @@
 /**
  * ScrobbleService.js
- * Handles scrobbling logic with a dual-threshold (50% or 4 mins) 
- * and tracking accumulated listen time. 
- * BUG 2 Fix applied: Seek resets accumulated time.
+ * Dual-target scrobble: Subsonic (primary) + Last.fm (optional, user-configured).
+ * Phase 6: Added _submitToLastFm(). Gated on settingsStore.lastfmSessionKey.
+ *
+ * api_sig rules (Last.fm spec): sort all params alphabetically, concatenate
+ * key+value pairs WITHOUT separator, append shared_secret, MD5 the result.
+ * IMPORTANT: exclude 'format' and 'callback' from the signature string.
  */
+
+import md5 from 'md5';
+import { useSettingsStore } from '../store/settingsStore';
+
+const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
 
 class ScrobbleService {
   constructor({ subsonicClient, onScrobble }) {
@@ -26,29 +34,20 @@ class ScrobbleService {
 
   _checkThresholds() {
     if (!this.currentSong || this.scrobbledSongs.has(this.currentSong.id)) return false;
-    
-    // Threshold 1: 4 minutes
     if (this.accumulatedListenTime >= 240) return true;
-    
-    // Threshold 2: 50% of duration
     const duration = this.currentSong.duration || 0;
-    if (duration > 0 && this.accumulatedListenTime >= (duration / 2)) return true;
-    
+    if (duration > 0 && this.accumulatedListenTime >= duration / 2) return true;
     return false;
   }
 
   onPlay(song) {
     if (!this.currentSong || this.currentSong.id !== song.id) {
-      // New track
       this.currentSong = song;
       this.accumulatedListenTime = 0;
       this.lastPlayTimestamp = Date.now();
     } else {
-      // Resuming same track
       this.lastPlayTimestamp = Date.now();
     }
-    
-    // Also try to check on every play, just in case
     this.checkAndSubmit();
   }
 
@@ -59,21 +58,16 @@ class ScrobbleService {
   }
 
   onSeek() {
-    // BUG 2 FIX: Reset accumulated listen time on seek 
-    // to prevent artificially inflating listen time by seeking back and forth.
+    // BUG 2 FIX: Reset accumulated listen time on seek
     this.accumulatedListenTime = 0;
     if (this.lastPlayTimestamp) {
-      this.lastPlayTimestamp = Date.now(); // Restart timer from now
+      this.lastPlayTimestamp = Date.now();
     }
   }
 
   onTrackChange() {
-    // Before switching out, see if we hit the threshold
-    if (this.lastPlayTimestamp) {
-      this._updateListenTime();
-    }
+    if (this.lastPlayTimestamp) this._updateListenTime();
     this.checkAndSubmit();
-    
     this.currentSong = null;
     this.accumulatedListenTime = 0;
     this.lastPlayTimestamp = null;
@@ -87,24 +81,82 @@ class ScrobbleService {
 
   async submitScrobble(song) {
     if (!song || !this.client) return;
-    
-    // Mark as scrobbled immediately to prevent duplicate rapid fires
+
     this.scrobbledSongs.add(song.id);
-    
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    // ── Subsonic scrobble ────────────────────────────────────────────────────
     try {
       await this.client._request('scrobble.view', {
         id: song.id,
         time: Date.now(),
-        submission: true
+        submission: true,
       });
-      console.log(`Scrobbled: ${song.title}`);
-      
-      if (this.onScrobbleCallback) {
-        // Convert accumulated time (seconds) to listenMs
-        this.onScrobbleCallback(song, Math.round(this.accumulatedListenTime * 1000));
+      console.log(`Scrobbled (Subsonic): ${song.title}`);
+    } catch (err) {
+      console.error(`Failed to scrobble to Subsonic: ${song.title}`, err);
+    }
+
+    // ── Affinity callback ────────────────────────────────────────────────────
+    if (this.onScrobbleCallback) {
+      this.onScrobbleCallback(song, Math.round(this.accumulatedListenTime * 1000));
+    }
+
+    // ── Last.fm scrobble (optional) ──────────────────────────────────────────
+    await this._submitToLastFm(song, timestamp);
+  }
+
+  /**
+   * Submit a scrobble to Last.fm.
+   * api_sig: sort params alphabetically (excluding 'format' and 'callback'),
+   * concatenate as key+value pairs, append api_secret, MD5 the whole string.
+   * Ref: https://www.last.fm/api/authspec
+   */
+  async _submitToLastFm(song, timestamp) {
+    const settings = useSettingsStore.getState();
+    const { scrobblingEnabled, lastfmSessionKey, lastfmApiKey, lastfmApiSecret } = settings;
+
+    if (!scrobblingEnabled || !lastfmSessionKey || !lastfmApiKey || !lastfmApiSecret) return;
+
+    const params = {
+      method:    'track.scrobble',
+      api_key:   lastfmApiKey,
+      sk:        lastfmSessionKey,
+      artist:    song.artist || '',
+      track:     song.title || '',
+      album:     song.album || '',
+      timestamp: String(timestamp),
+    };
+
+    // Build signature — sort keys, exclude 'format' and 'callback', concatenate, append secret
+    const sigString =
+      Object.keys(params)
+        .sort()
+        .map((k) => `${k}${params[k]}`)
+        .join('') + lastfmApiSecret;
+
+    const api_sig = md5(sigString);
+
+    const body = new URLSearchParams({
+      ...params,
+      api_sig,
+      format: 'json', // excluded from sig but included in request
+    });
+
+    try {
+      const res = await fetch(LASTFM_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      const data = await res.json();
+      if (data?.scrobbles?.['@attr']?.accepted > 0) {
+        console.log(`Scrobbled (Last.fm): ${song.title}`);
+      } else {
+        console.warn('Last.fm scrobble not accepted:', data?.scrobbles?.scrobble);
       }
     } catch (err) {
-      console.error(`Failed to scrobble ${song.title}:`, err);
+      console.error('Last.fm scrobble failed:', err);
     }
   }
 }

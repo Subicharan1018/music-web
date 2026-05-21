@@ -116,7 +116,10 @@ export const FluidBackground = ({ song }) => {
     <div className="absolute inset-0 overflow-hidden">
       {prevPalette ? buildBlobs(prevPalette, fadeStage !== 'fade') : null}
       {buildBlobs(palette, fadeStage === 'fade' || !prevPalette)}
-      <div className="absolute inset-0 bg-ink/40" />
+      {/* Darkened to bg-ink/50 for text legibility on lighter palettes */}
+      <div className="absolute inset-0 bg-ink/50" />
+      {/* Bottom gradient ensures controls remain readable on any palette */}
+      <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-ink/30 to-transparent pointer-events-none" />
     </div>
   );
 };

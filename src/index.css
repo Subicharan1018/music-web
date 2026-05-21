@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #efe7d2;
-  --color-paper-warm: #ece4cf;
-  --color-paper-dark: #ddd2b6;
-  --color-paper-bone: #f7f1de;
+  --color-paper: #000000;
+  --color-paper-warm: #0a0a0a;
+  --color-paper-dark: #141414;
+  --color-paper-bone: #1f1f1f;
 
-  --color-ink: #15140f;
-  --color-ink-soft: #2a2620;
-  --color-ink-mute: #5a5448;
-  --color-ink-faint: #8b8676;
+  --color-ink: #ffffff;
+  --color-ink-soft: #e5e5e5;
+  --color-ink-mute: #a3a3a3;
+  --color-ink-faint: #737373;
 
-  --color-coral: #ed6f5c;
-  --color-coral-soft: #f08e7c;
+  --color-coral: #dc143c;
+  --color-coral-soft: #e34262;
 
-  --color-mustard: #e9b94a;
-  --color-olive: #6e7448;
+  --color-mustard: #ff8c00;
+  --color-olive: #b36200;
   
   --color-accent: var(--accent);
 
@@ -85,6 +85,113 @@
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
   }
+
+  .dark-override {
+    background-color: var(--color-ink) !important;
+    color: var(--color-paper) !important;
+  }
+
+  /* ── Playlist page: full dark mode ───────────────────────────────────────── */
+  body.playlist-page-active {
+    background: #080808 !important;
+  }
+
+  /* #root stays a plain positioned box — no isolation, no z-index */
+  #root {
+    position: relative;
+  }
+
+  /* AppShell + root background transparent so fixed bg layers show through */
+  body.playlist-page-active #root,
+  body.playlist-page-active .app-shell {
+    background: transparent !important;
+  }
+
+  /*
+   * NOTE: Do NOT add position/z-index overrides for .app-shell > * here.
+   * PlaylistBackground divs are position:fixed at z-index:0 — they naturally
+   * sit behind all in-flow grid content. Forcing position:relative on grid
+   * children was breaking TopBar (fixed), SideRail (fixed), and the layout.
+   */
+
+  /* Sidebar <aside> — dark glass on playlist pages (not QueuePanel which is .fixed) */
+  body.playlist-page-active .app-shell aside:not(.fixed) {
+    background: rgba(5, 5, 8, 0.60) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+  }
+
+  /* Sidebar text goes light */
+  body.playlist-page-active .app-shell aside:not(.fixed) * {
+    color: rgba(255, 255, 255, 0.75) !important;
+  }
+
+  /* Active nav link stays coral */
+  body.playlist-page-active .app-shell aside:not(.fixed) a[aria-current="page"] {
+    color: var(--color-coral, #ed6f5c) !important;
+  }
+
+  /* Main content area transparent so bg bleeds through */
+  body.playlist-page-active .main-content,
+  body.playlist-page-active main {
+    background: transparent !important;
+  }
+
+  /* TopBar goes dark on playlist pages */
+  body.playlist-page-active .app-shell > div.fixed.top-0 {
+    background: rgba(5, 5, 8, 0.75) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  /* TopBar text all white on playlist pages */
+  body.playlist-page-active .app-shell > div.fixed.top-0 * {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  /* SideRail labels go light */
+  body.playlist-page-active [class*="side-rail"],
+  body.playlist-page-active [class*="sideRail"] {
+    color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  /* PlayerBar — keep dark glass regardless */
+  body.playlist-page-active footer[style] {
+    z-index: 100 !important;
+  }
+
+  /* QueuePanel — dark glass on playlist pages */
+  body.playlist-page-active aside.fixed.right-0 {
+    background: rgba(8, 8, 12, 0.92) !important;
+    backdrop-filter: blur(28px) !important;
+    -webkit-backdrop-filter: blur(28px) !important;
+    border-left-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* QueuePanel text colors */
+  body.playlist-page-active aside.fixed.right-0 * {
+    color: rgba(255, 255, 255, 0.75) !important;
+  }
+
+  body.playlist-page-active aside.fixed.right-0 h2 {
+    color: rgba(255, 255, 255, 0.95) !important;
+  }
+}
+
+@keyframes eq1 {
+  0%, 100% { height: 50%; }
+  50% { height: 100%; }
+}
+@keyframes eq2 {
+  0%, 100% { height: 100%; }
+  50% { height: 30%; }
+}
+@keyframes eq3 {
+  0%, 100% { height: 30%; }
+  50% { height: 80%; }
 }
 
 /* Music player / demo keyframes added for widgets */
@@ -150,6 +257,26 @@
 @keyframes blob-drift-d {
   0% { transform: translate(6%, 6%) scale(1); }
   100% { transform: translate(-6%, -6%) scale(1.06); }
+}
+
+/* Vinyl ring rotation — used by NowPlayingOverlay album art */
+@keyframes vinyl-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.vinyl-spin {
+  animation: vinyl-rotate 20s linear infinite;
+}
+
+.vinyl-spin.paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-spin {
+    animation: none;
+  }
 }
 
 /* tw-animate-css import removed — not installed in this environment. */
