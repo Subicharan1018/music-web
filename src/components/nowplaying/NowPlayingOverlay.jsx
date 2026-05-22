@@ -22,6 +22,7 @@ import { useServerHealth } from '../../hooks/ai/useServerHealth';
 import { usePlayerStore } from '../../store/playerStore';
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import React from 'react';
 
 const FALLBACK_COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%230a0a0a"/><circle cx="200" cy="200" r="120" fill="%23111"/><circle cx="200" cy="200" r="18" fill="%23333"/></svg>';
@@ -30,6 +31,40 @@ const fmt = (s) => {
   const n = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 };
+
+const OverlayProgress = React.memo(({ seek }) => {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const rangeRef = useRef(null);
+  const seekingRef = useRef(false);
+
+  useEffect(() => {
+    if (!rangeRef.current || seekingRef.current) return;
+    const pct = duration > 0 ? (position / duration) * 100 : 0;
+    rangeRef.current.style.setProperty('--pct', pct.toFixed(2));
+    rangeRef.current.value = pct.toFixed(2);
+  }, [position, duration]);
+
+  const onRangeDown = useCallback(() => { seekingRef.current = true; }, []);
+  const onRangeChange = useCallback((e) => { e.target.style.setProperty('--pct', parseFloat(e.target.value).toFixed(2)); }, []);
+  const onRangeUp = useCallback((e) => { seek((parseFloat(e.target.value) / 100) * duration); seekingRef.current = false; }, [seek, duration]);
+
+  return (
+    <div className="w-full max-w-md relative flex items-center gap-4">
+      <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(position)}</span>
+      <div className="flex-1 relative group h-2 flex items-center">
+        <div className="absolute inset-x-0 h-[3px] bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full bg-[#e34262] relative" style={{ width: `${(position / duration) * 100 || 0}%` }}>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </div>
+        <input ref={rangeRef} type="range" className="absolute inset-x-0 -inset-y-2 w-full h-[20px] opacity-0 cursor-pointer z-10" min="0" max="100" step="0.05" defaultValue="0"
+          onMouseDown={onRangeDown} onTouchStart={onRangeDown} onMouseUp={onRangeUp} onTouchEnd={onRangeUp} onChange={onRangeChange} aria-label="Seek" />
+      </div>
+      <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(duration)}</span>
+    </div>
+  );
+});
 
 /* ── UI Subcomponents ────────────────────────────────────────────────────── */
 const LiveWaveform = ({ isPlaying }) => {
@@ -197,7 +232,7 @@ const LyricsPanel = ({ lines, currentLineIndex, isSynced, isLoading, error, hand
 };
 
 /* ── QueuePanel ──────────────────────────────────────────────────────────── */
-const QueuePanel = ({ queue, currentIndex, client }) => {
+const QueuePanel = ({ queue, currentIndex, client, play }) => {
   if (!queue.length) return (
     <div className="flex items-center justify-center h-full">
       <p className="font-serif italic text-2xl text-white/15">Queue is empty</p>
@@ -213,7 +248,8 @@ const QueuePanel = ({ queue, currentIndex, client }) => {
           return (
             <div
               key={`${i}-${song.id}`}
-              className={`q-item ${isCurrent ? 'current' : ''}`}
+              onClick={() => play(song)}
+              className={`q-item ${isCurrent ? 'current' : ''} cursor-pointer`}
             >
               <div className="w-5 text-center flex-shrink-0">
                 {isCurrent
@@ -250,7 +286,7 @@ export const NowPlayingOverlay = () => {
   const { nowPlayingExpanded, setNowPlayingExpanded } = useUIStore();
   const client = useSubsonic();
   const {
-    currentSong, isPlaying, position, duration, volume, queue,
+    currentSong, isPlaying, volume, queue,
     play, pause, next, prev, seek, setVolume,
     shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
     repeatMode, setRepeatMode, currentIndex,
@@ -273,20 +309,7 @@ export const NowPlayingOverlay = () => {
 
   const { v2ShuffleEnabled } = useSettingsStore();
 
-  const { lines, currentLineIndex, isSynced, isLoading: lyricsLoading, error: lyricsError, handleScroll, registerLineRef } = useLyrics(currentSong, (position || 0) * 1000);
-
-  /* ── Progress range ── */
-  const rangeRef = useRef(null);
-  const seekingRef = useRef(false);
-  useEffect(() => {
-    if (!rangeRef.current || seekingRef.current) return;
-    const pct = duration > 0 ? (position / duration) * 100 : 0;
-    rangeRef.current.style.setProperty('--pct', pct.toFixed(2));
-    rangeRef.current.value = pct.toFixed(2);
-  }, [position, duration]);
-  const onRangeDown = useCallback(() => { seekingRef.current = true; }, []);
-  const onRangeChange = useCallback((e) => { e.target.style.setProperty('--pct', parseFloat(e.target.value).toFixed(2)); }, []);
-  const onRangeUp = useCallback((e) => { seek((parseFloat(e.target.value) / 100) * duration); seekingRef.current = false; }, [seek, duration]);
+  const { lines, currentLineIndex, isSynced, isLoading: lyricsLoading, error: lyricsError, handleScroll, registerLineRef } = useLyrics(currentSong);
 
   /* ── Volume ── */
   const volRef = useRef(null);
@@ -409,7 +432,7 @@ export const NowPlayingOverlay = () => {
                 handleScroll={handleScroll} registerLineRef={registerLineRef} seek={seek}
               />
             ) : (
-              <QueuePanel queue={queue} currentIndex={currentIndex ?? 0} client={client} />
+              <QueuePanel queue={queue} currentIndex={currentIndex ?? 0} client={client} play={play} />
             )}
           </div>
         </div>
@@ -466,19 +489,7 @@ export const NowPlayingOverlay = () => {
              </div>
              
              {/* Progress */}
-             <div className="w-full max-w-md relative flex items-center gap-4">
-                <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(position)}</span>
-                <div className="flex-1 relative group h-2 flex items-center">
-                  <div className="absolute inset-x-0 h-[3px] bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#e34262] relative" style={{ width: `${(position / duration) * 100 || 0}%` }}>
-                       <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
-                  <input ref={rangeRef} type="range" className="absolute inset-x-0 -inset-y-2 w-full h-[20px] opacity-0 cursor-pointer z-10" min="0" max="100" step="0.05" defaultValue="0"
-                    onMouseDown={onRangeDown} onTouchStart={onRangeDown} onMouseUp={onRangeUp} onTouchEnd={onRangeUp} onChange={onRangeChange} aria-label="Seek" />
-                </div>
-                <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(duration)}</span>
-             </div>
+             <OverlayProgress seek={seek} />
           </div>
 
           {/* RIGHT: Extra */}

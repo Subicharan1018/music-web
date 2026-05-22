@@ -6,7 +6,6 @@
 
 import { Howl } from 'howler';
 import ReplayGainService from './ReplayGainService';
-import ScrobbleService from './ScrobbleService';
 
 class AudioEngine {
   constructor({ onTrackEnd, onPositionUpdate, onStateChange, onSkip }) {
@@ -33,6 +32,7 @@ class AudioEngine {
 
     // RC-01: Generation counter
     this._generation = 0;
+    this._isTransitioning = false;
   }
 
   _calculateVolume(song) {
@@ -47,6 +47,12 @@ class AudioEngine {
   }
 
   load(song, streamUrl, autoplay = true) {
+    if (this.trackEndTimer) {
+      clearTimeout(this.trackEndTimer);
+      this.trackEndTimer = null;
+    }
+    
+    this._isTransitioning = true;
     this._checkSkipCondition();
     this._cleanupActive();
     this._accumulatedTime = 0;
@@ -100,6 +106,7 @@ class AudioEngine {
     howl.on('play', () => {
       if (this._generation !== gen) return;
       this._isPlaying = true;
+      this._isTransitioning = false;
       this.onStateChange?.(true);
     });
     howl.on('pause', () => {
@@ -115,6 +122,8 @@ class AudioEngine {
 
     howl.on('end', () => {
       if (this._generation !== gen) return; // RC-01: stale Howl fired, discard
+      if (this._isTransitioning) return;
+      this._isTransitioning = true;
       this._isPlaying = false;
       this.isNaturalEnd = true;
       if (this.trackEndTimer) clearTimeout(this.trackEndTimer);
@@ -130,6 +139,7 @@ class AudioEngine {
     // If already preloaded this song, do nothing
     if (this.preloadedSong?.id === song.id) return;
 
+    this._isTransitioning = true;
     this._cleanupPreloaded();
 
     this.preloadedSong = song;
@@ -209,31 +219,11 @@ class AudioEngine {
     }
   }
 
-  /**
-   * Called by usePlayer's polling interval (300ms while playing).
-   * Drives scrobble accumulation without a separate setInterval.
-   * dt = elapsed seconds since last call (approximate, caller should track).
-   */
-  _tickScrobble(pos, dur, dt) {
-    if (!this.activeSong || this._accumulatedTime === Infinity) return;
-
-    // RC-05: Detect repeat-one loop — position jumped backward by >5s
-    if (pos < this._lastProgressPos - 5) {
-      this._accumulatedTime = 0;
-    }
-    this._lastProgressPos = pos;
-
-    if (this._isPlaying) {
-      this._accumulatedTime += dt;
-    }
-    if (this._accumulatedTime >= Math.min(dur * 0.5, 240) && dur > 0) {
-      ScrobbleService.scrobble(this.activeSong.id);
-      this._accumulatedTime = Infinity; // prevent double-scrobble
-    }
-  }
+  // removed _tickScrobble in favor of ScrobbleService internal tick
 
   _cleanupActive() {
     if (this.activeHowl) {
+      this.activeHowl.stop();
       this.activeHowl.unload();
       this.activeHowl = null;
     }
@@ -250,6 +240,7 @@ class AudioEngine {
 
   _cleanupPreloaded() {
     if (this.preloadedHowl) {
+      this.preloadedHowl.stop();
       this.preloadedHowl.unload();
       this.preloadedHowl = null;
     }

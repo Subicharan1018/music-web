@@ -7,8 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LyricsService } from '../../services/LyricsService';
 import { getCurrentLineIndex } from '../../services/LrcParser';
 import { useSubsonic } from '../useSubsonic';
+import { usePlayerStore } from '../../store/playerStore';
 
-export const useLyrics = (song, positionMs) => {
+export const useLyrics = (song) => {
   const client = useSubsonic();
   const serviceRef = useRef(null);
   const lastSongIdRef = useRef(null);
@@ -79,13 +80,18 @@ export const useLyrics = (song, positionMs) => {
 
   useEffect(() => {
     if (!isSynced || !lines.length) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentLineIndex(-1);
       return;
     }
-    const idx = getCurrentLineIndex(lines, positionMs || 0);
-    setCurrentLineIndex((prev) => (prev === idx ? prev : idx));
-  }, [lines, isSynced, positionMs]);
+    
+    const unsub = usePlayerStore.subscribe((state) => {
+      const pos = state.position || 0;
+      const idx = getCurrentLineIndex(lines, pos * 1000);
+      setCurrentLineIndex((prev) => (prev === idx ? prev : idx));
+    });
+    
+    return unsub;
+  }, [lines, isSynced]);
 
   useEffect(() => {
     if (!isSynced || currentLineIndex < 0) return;

@@ -19,7 +19,7 @@ const formatDuration = (seconds) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const SongRow = ({ song, index, contextSongs = [], context = 'library', onRemove }) => {
+export const SongRow = React.memo(({ song, index, contextSongs = [], context = 'library', onRemove, style: propStyle }) => {
   const client = useSubsonic();
   const { playSong } = usePlayAction();
   const currentSong = usePlayerStore(state => state.currentSong);
@@ -41,6 +41,7 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
   });
 
   const style = {
+    ...propStyle,
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 1,
@@ -188,4 +189,4 @@ export const SongRow = ({ song, index, contextSongs = [], context = 'library', o
       />
     </>
   );
-};
+});

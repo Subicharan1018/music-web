@@ -2,15 +2,14 @@
  * useKeyboardShortcuts.js
  * Global keyboard shortcuts for playback control and navigation.
  */
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { usePlayerStore } from '../store/playerStore';
 import { useNavigate } from 'react-router-dom';
 
 export const useKeyboardShortcuts = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
       // Ignore if user is typing in an input, textarea, or contenteditable
       const target = e.target;
       if (
@@ -69,9 +68,10 @@ export const useKeyboardShortcuts = () => {
         default:
           break;
       }
-    };
+    }, [navigate]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+    useEffect(() => {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleKeyDown]);
 };

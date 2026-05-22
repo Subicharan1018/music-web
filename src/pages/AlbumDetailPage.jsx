@@ -10,8 +10,13 @@ import { usePlayAction } from '../hooks/player/usePlayAction';
 import { paletteService } from '../services/PaletteService';
 import { SongRow } from '../components/library/SongRow';
 import { SkeletonRow } from '../components/shared/SkeletonRow';
+import * as reactWindowPkg from 'react-window';
+const { FixedSizeList } = reactWindowPkg;
+import * as autoSizerPkg from 'react-virtualized-auto-sizer';
+const AutoSizer = autoSizerPkg.default || autoSizerPkg;
 import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 import { useRef } from 'react';
+import { SONG_ROW_HEIGHT } from '../lib/constants';
 
 export const AlbumDetailPage = () => {
   const { id } = useParams();
@@ -128,10 +133,28 @@ export const AlbumDetailPage = () => {
               </button>
             </div>
             
-            <div className="flex flex-col">
-              {album.song?.map((song, i) => (
-                <SongRow key={song.id} song={song} index={i} contextSongs={album.song} />
-              ))}
+            <div className="flex-1 min-h-[600px]">
+              {album.song && (
+                <AutoSizer>
+                  {({ height, width }) => (
+                    <FixedSizeList
+                      height={height}
+                      width={width}
+                      itemCount={album.song.length}
+                      itemSize={SONG_ROW_HEIGHT}
+                    >
+                      {({ index, style }) => (
+                        <SongRow 
+                          style={style} 
+                          song={album.song[index]} 
+                          index={index} 
+                          contextSongs={album.song} 
+                        />
+                      )}
+                    </FixedSizeList>
+                  )}
+                </AutoSizer>
+              )}
             </div>
           </div>
         </div>

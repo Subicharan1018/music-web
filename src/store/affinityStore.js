@@ -64,6 +64,13 @@ export const useAffinityStore = create((set, get) => ({
   recordPlay: (song, listenMs) => {
     set((state) => {
       const now = Date.now();
+
+      // Guard: prevent duplicate records of the same song within 5 minutes
+      const lastPlay = state.recentPlays[state.recentPlays.length - 1];
+      if (lastPlay && lastPlay.song.id === song.id && (now - lastPlay.playedAt < 5 * 60 * 1000)) {
+        return state; // skip update
+      }
+
       const hour = new Date().getHours();
       const todayKey = toDateKey(now);
 
@@ -300,22 +307,27 @@ function computeStreak(dailyListening) {
 
 // ── Debounced persistence ────────────────────────────────────────────────────
 let persistTimer = null;
+
+export const flushNow = () => {
+  if (persistTimer) clearTimeout(persistTimer);
+  const state = useAffinityStore.getState();
+  const persistData = {
+    artists: state.artists,
+    genres: state.genres,
+    songs: state.songs,
+    hourBuckets: state.hourBuckets,
+    playHistory: state.playHistory,
+    recentPlays: state.recentPlays,
+    dailyListening: state.dailyListening,
+    lifetimeTotalMs: state.lifetimeTotalMs,
+    bestStreak: state.bestStreak,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persistData));
+};
+
 useAffinityStore.subscribe((state, prevState) => {
   if (!prevState || state !== prevState) {
     if (persistTimer) clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => {
-      const persistData = {
-        artists: state.artists,
-        genres: state.genres,
-        songs: state.songs,
-        hourBuckets: state.hourBuckets,
-        playHistory: state.playHistory,
-        recentPlays: state.recentPlays,
-        dailyListening: state.dailyListening,
-        lifetimeTotalMs: state.lifetimeTotalMs,
-        bestStreak: state.bestStreak,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistData));
-    }, 5000);
+    persistTimer = setTimeout(flushNow, 5000);
   }
 });

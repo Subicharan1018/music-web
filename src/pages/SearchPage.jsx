@@ -6,6 +6,9 @@ import { SongRow } from '../components/library/SongRow';
 import { useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
 import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
+import * as reactWindowPkg from 'react-window';
+const { FixedSizeList } = reactWindowPkg;
+import { SONG_ROW_HEIGHT } from '../lib/constants';
 
 export const SearchPage = () => {
   const [query, setQuery] = useState('');
@@ -120,9 +123,21 @@ export const SearchPage = () => {
           Songs
         </div>
         <div className="flex flex-col">
-          {displaySongs.map((song, i) => (
-            <SongRow key={song.id} song={song} index={i} contextSongs={displaySongs} />
-          ))}
+          <FixedSizeList
+            height={Math.min(600, displaySongs.length * SONG_ROW_HEIGHT)}
+            width="100%"
+            itemCount={displaySongs.length}
+            itemSize={SONG_ROW_HEIGHT}
+          >
+            {({ index, style }) => (
+              <SongRow 
+                style={style} 
+                song={displaySongs[index]} 
+                index={index} 
+                contextSongs={displaySongs} 
+              />
+            )}
+          </FixedSizeList>
         </div>
       </div>
     );

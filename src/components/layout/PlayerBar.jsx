@@ -21,6 +21,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { usePlayerStore } from '../../store/playerStore';
 import { ShuffleModeToggle } from '../shared/ShuffleModeToggle';
 
 /* ── helpers ── */
@@ -32,10 +33,83 @@ const fmt = (s) => {
 const FALLBACK_COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%230a0000"/><circle cx="200" cy="200" r="120" fill="%23150000"/><circle cx="200" cy="200" r="18" fill="%23c0392b"/></svg>';
 
+/* ── Progress Subcomponents ── */
+const MobileProgressLine = React.memo(() => {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  return (
+    <div
+      className="absolute bottom-0 left-0 h-[2px] rounded-full"
+      style={{
+        width: `${duration > 0 ? (position / duration) * 100 : 0}%`,
+        background: 'linear-gradient(90deg, #8B0000, #DC143C)',
+        transition: 'width 0.3s linear',
+      }}
+    />
+  );
+});
+
+const DesktopProgress = React.memo(({ seek }) => {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const rangeRef = useRef(null);
+  const seekingRef = useRef(false);
+
+  useEffect(() => {
+    if (!rangeRef.current || seekingRef.current) return;
+    const pct = duration > 0 ? (position / duration) * 100 : 0;
+    rangeRef.current.style.setProperty('--pct', pct.toFixed(2));
+    rangeRef.current.value = pct.toFixed(2);
+  }, [position, duration]);
+
+  const onRangeChange = useCallback((e) => {
+    const pct = parseFloat(e.target.value);
+    e.target.style.setProperty('--pct', pct.toFixed(2));
+  }, []);
+
+  const onRangeDown = useCallback(() => {
+    seekingRef.current = true;
+  }, []);
+
+  const onRangeUp = useCallback((e) => {
+    const pct = parseFloat(e.target.value);
+    seek((pct / 100) * duration);
+    seekingRef.current = false;
+  }, [seek, duration]);
+
+  return (
+    <div className="flex items-center gap-2 w-full max-w-lg">
+      <span className="text-[10px] font-mono text-white/30 w-8 text-right tabular-nums">
+        {fmt(position)}
+      </span>
+
+      <input
+        ref={rangeRef}
+        type="range"
+        className="player-range flex-1"
+        min="0"
+        max="100"
+        step="0.05"
+        defaultValue="0"
+        onMouseDown={onRangeDown}
+        onTouchStart={onRangeDown}
+        onMouseUp={onRangeUp}
+        onTouchEnd={onRangeUp}
+        onChange={onRangeChange}
+        aria-label="Seek"
+      />
+
+      <span className="text-[10px] font-mono text-white/30 w-8 tabular-nums">
+        {fmt(duration)}
+      </span>
+    </div>
+  );
+});
+
 /* ── PlayerBar ── */
 export const PlayerBar = () => {
   const {
-    currentSong, isPlaying, position, duration,
+    currentSong, isPlaying,
     volume, play, pause, next, prev, seek, setVolume,
     shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
     repeatMode, setRepeatMode, queue,
@@ -60,33 +134,6 @@ export const PlayerBar = () => {
   }, []);
   const isMobile = width < 768;
   const isCompact = width < 480;
-
-  /* ── Progress bar: --pct via direct DOM write, no React state ── */
-  const rangeRef = useRef(null);
-  const seekingRef = useRef(false);
-
-  // Keep --pct in sync via rAF when not seeking
-  useEffect(() => {
-    if (!rangeRef.current || seekingRef.current) return;
-    const pct = duration > 0 ? (position / duration) * 100 : 0;
-    rangeRef.current.style.setProperty('--pct', pct.toFixed(2));
-    rangeRef.current.value = pct.toFixed(2);
-  }, [position, duration]);
-
-  const onRangeChange = useCallback((e) => {
-    const pct = parseFloat(e.target.value);
-    e.target.style.setProperty('--pct', pct.toFixed(2));
-  }, []);
-
-  const onRangeDown = useCallback(() => {
-    seekingRef.current = true;
-  }, []);
-
-  const onRangeUp = useCallback((e) => {
-    const pct = parseFloat(e.target.value);
-    seek((pct / 100) * duration);
-    seekingRef.current = false;
-  }, [seek, duration]);
 
   /* ── Volume ── */
   const volRef = useRef(null);
@@ -237,15 +284,7 @@ export const PlayerBar = () => {
             }
           </button>
 
-          {/* Progress line at bottom */}
-          <div
-            className="absolute bottom-0 left-0 h-[2px] rounded-full"
-            style={{
-              width: `${duration > 0 ? (position / duration) * 100 : 0}%`,
-              background: 'linear-gradient(90deg, #8B0000, #DC143C)',
-              transition: 'width 0.3s linear',
-            }}
-          />
+          <MobileProgressLine />
         </div>
       </footer>
     );
@@ -349,31 +388,7 @@ export const PlayerBar = () => {
           </div>
 
           {/* Progress row */}
-          <div className="flex items-center gap-2 w-full max-w-lg">
-            <span className="text-[10px] font-mono text-white/30 w-8 text-right tabular-nums">
-              {fmt(position)}
-            </span>
-
-            <input
-              ref={rangeRef}
-              type="range"
-              className="player-range flex-1"
-              min="0"
-              max="100"
-              step="0.05"
-              defaultValue="0"
-              onMouseDown={onRangeDown}
-              onTouchStart={onRangeDown}
-              onMouseUp={onRangeUp}
-              onTouchEnd={onRangeUp}
-              onChange={onRangeChange}
-              aria-label="Seek"
-            />
-
-            <span className="text-[10px] font-mono text-white/30 w-8 tabular-nums">
-              {fmt(duration)}
-            </span>
-          </div>
+          <DesktopProgress seek={seek} />
         </div>
 
         {/* RIGHT: Volume + Controls + AI✦ */}

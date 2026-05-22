@@ -57,6 +57,13 @@ class ScrobbleService {
     this.checkAndSubmit();
   }
 
+  tick() {
+    if (this.lastPlayTimestamp) {
+      this._updateListenTime();
+      this.checkAndSubmit();
+    }
+  }
+
   onSeek() {
     // BUG 2 FIX: Reset accumulated listen time on seek
     this.accumulatedListenTime = 0;

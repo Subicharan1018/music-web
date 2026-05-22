@@ -163,16 +163,16 @@ export const usePlaylistStore = create((set, get) => ({
         await client.updatePlaylist(id, { songIdToAdd: newSongIds });
       }
 
-      set({ pendingReorder: false });
     } catch (error) {
       // Revert to ground truth
       set({
         openPlaylist: { ...openPlaylist, entry: groundTruthSongs },
         error: error.message,
-        pendingReorder: false
       });
       // Try to sync store by fetching again, just in case
-      get().fetchPlaylist(client, id);
+      get().fetchPlaylist(client, id).catch(() => {});
+    } finally {
+      set({ pendingReorder: false });
     }
   },
 

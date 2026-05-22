@@ -31,7 +31,7 @@ let _playlistPool = [];
 let _isFetchingSmartLocal = false;
 let _shuffleLock = false;          // S5: guard against concurrent enableSmartShuffle
 const SMART_LOCAL_BATCH     = 15;
-const SMART_LOCAL_THRESHOLD = 3;
+const SMART_LOCAL_THRESHOLD = 13;
 
 // ── Persistence migration ────────────────────────────────────────────────────
 // C4: bump PERSIST_VERSION to strip stale fields (isShuffled, shuffleEnabled)
@@ -179,6 +179,7 @@ async function _triggerSmartLocalRefill(getState) {
   }
 }
 
+
 // ── Store ────────────────────────────────────────────────────────────────────
 export const usePlayerStore = create((set, get) => ({
   ...initialState,
@@ -229,11 +230,22 @@ export const usePlayerStore = create((set, get) => ({
         shuffleActive:  shuffleMode !== 'none',
         queuePosition:  index >= 0 ? index : currentIndex,
       });
+      const newCurrentIndex = index >= 0 ? index : currentIndex;
       set({
         currentSong: song,
-        currentIndex: index >= 0 ? index : currentIndex,
+        currentIndex: newCurrentIndex,
         isPlaying: true,
       });
+
+      // Smart Local: trigger background refill when ≤ SMART_LOCAL_THRESHOLD remain ahead
+      const fresh = get();
+      if ((fresh.shuffleMode === 'smart' || fresh.shuffleMode === 'smart-v2') && _playlistPool.length > 0) {
+        const remainingAhead = fresh.queue.length - 1 - newCurrentIndex;
+        if (remainingAhead <= SMART_LOCAL_THRESHOLD) {
+          _triggerSmartLocalRefill(get);
+        }
+      }
+
       // Preload next
       const nextIdx = (index >= 0 ? index : currentIndex) + 1;
       if (nextIdx < queue.length) {
@@ -829,20 +841,29 @@ usePlayerStore.subscribe((state, prev) => {
   if (!changed) return;
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(PERSIST_KEY, JSON.stringify({
-        __version: PERSIST_VERSION,
-        queue: state.queue.map(sanitizeSong),
-        currentIndex: state.currentIndex,
-        currentSong: sanitizeSong(state.currentSong),
-        volume: state.volume,
-        shuffleMode: 'none',       // always reset on reload — don't restore mid-shuffle
-        originalQueue: [],          // same — reset to avoid stale pool context
-        repeatMode: state.repeatMode,
-        gainValue: state.gainValue,
-      }));
-    } catch (e) {
-      console.error('[playerStore] Persist failed:', e);
-    }
+    flushPlayerStore();
   }, 5000);
 });
+
+export const flushPlayerStore = () => {
+  if (_persistTimer) {
+    clearTimeout(_persistTimer);
+    _persistTimer = null;
+  }
+  const state = usePlayerStore.getState();
+  try {
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({
+      __version: PERSIST_VERSION,
+      queue: state.queue.map(sanitizeSong),
+      currentIndex: state.currentIndex,
+      currentSong: sanitizeSong(state.currentSong),
+      volume: state.volume,
+      shuffleMode: 'none',
+      originalQueue: [],
+      repeatMode: state.repeatMode,
+      gainValue: state.gainValue,
+    }));
+  } catch (e) {
+    console.error('[playerStore] Persist failed:', e);
+  }
+};

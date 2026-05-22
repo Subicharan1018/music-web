@@ -16,6 +16,7 @@ export const GENRE_BPM_MAP = {
   'Soul': 90,
 };
 
+export const SONG_ROW_HEIGHT = 56;
 export const FALLBACK_TRACK = { title: 'No track loaded', artist: '', albumArt: '' };
 export const SCROBBLE_THRESHOLD_PCT = 0.5;
 export const SCROBBLE_THRESHOLD_SEC = 240;

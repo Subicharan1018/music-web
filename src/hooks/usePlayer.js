@@ -9,20 +9,18 @@ import { usePlayerStore } from '../store/playerStore';
 import { useAffinityStore } from '../store/affinityStore';
 
 export const usePlayer = () => {
-  const store = usePlayerStore();
+  const queue = usePlayerStore(s => s.queue);
+  const currentSong = usePlayerStore(s => s.currentSong);
+  const isPlaying = usePlayerStore(s => s.isPlaying);
+  const currentIndex = usePlayerStore(s => s.currentIndex);
+  const volume = usePlayerStore(s => s.volume);
+  const shuffleMode = usePlayerStore(s => s.shuffleMode);
+  const shufflePending = usePlayerStore(s => s.shufflePending);
+  const repeatMode = usePlayerStore(s => s.repeatMode);
+  const audioEngine = usePlayerStore(s => s.audioEngine);
+
   const timerRef = useRef(null);
-  const trackChangeRef = useRef(null); // BUG 1 Fix
-
-  const [affinityRefresh, setAffinityRefresh] = useState(0);
-  const affinityData = useMemo(() => useAffinityStore.getState(), [affinityRefresh]);
-
-  const { 
-    audioEngine, 
-    isPlaying, 
-    setPosition, 
-    setDuration,
-    currentSong,
-  } = store;
+  const trackChangeRef = useRef(null);
 
   // Main position + duration polling — only while playing.
   // 300ms is smooth enough for the UI scrubber and saves CPU vs 250ms.
@@ -32,10 +30,13 @@ export const usePlayer = () => {
       timerRef.current = setInterval(() => {
         const pos = audioEngine.getCurrentPosition();
         const dur = audioEngine.getDuration();
-        setPosition(pos);
-        if (dur > 0) setDuration(dur);
-        // Drive scrobble accumulation from this single tick (replaces AudioEngine's own timer)
-        audioEngine._tickScrobble?.(pos, dur, 0.3);
+        usePlayerStore.getState().setPosition(pos);
+        if (dur > 0) usePlayerStore.getState().setDuration(dur);
+        // Drive scrobble accumulation from this single tick
+        const store = usePlayerStore.getState();
+        if (store.scrobbleService) {
+          store.scrobbleService.tick();
+        }
       }, 300);
     } else {
       if (timerRef.current) {
@@ -49,7 +50,7 @@ export const usePlayer = () => {
         timerRef.current = null;
       }
     };
-  }, [isPlaying, audioEngine, setPosition, setDuration]);
+  }, [isPlaying, audioEngine]);
 
 
   // One-shot duration read on song change — covers the paused/initial case.
@@ -62,14 +63,14 @@ export const usePlayer = () => {
     const tryRead = () => {
       const dur = audioEngine.getDuration();
       if (dur > 0) {
-        setDuration(dur);
+        usePlayerStore.getState().setDuration(dur);
       } else if (++attempts < MAX) {
         raf = requestAnimationFrame(tryRead);
       }
     };
     raf = requestAnimationFrame(tryRead);
     return () => { if (raf) cancelAnimationFrame(raf); };
-  }, [currentSong?.id, audioEngine, setDuration]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentSong?.id, audioEngine]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup trackChangeRef on unmount
   useEffect(() => {
@@ -92,41 +93,38 @@ export const usePlayer = () => {
     trackChangeRef.current = { abort: () => controller.abort(), timerId };
   }, []);
 
-  const play = useCallback((song) => store.play(song), [store]);
-  const pause = useCallback(() => store.pause(), [store]);
-  const next = useCallback(() => debouncedAction(() => store.next()), [store, debouncedAction]);
-  const prev = useCallback(() => debouncedAction(() => store.prev()), [store, debouncedAction]);
-  const seek = useCallback((seconds) => store.seek(seconds), [store]);
-  const setVolume = useCallback((v) => store.setVolume(v), [store]);
-  const setQueue = useCallback((q) => store.setQueue(q), [store]);
-  const addToQueue = useCallback((song) => store.addToQueue(song), [store]);
-  const setShuffle = useCallback((e) => store.setShuffle(e), [store]);
-  const setRepeatMode = useCallback((m) => store.setRepeatMode(m), [store]);
+  const play = useCallback((song) => usePlayerStore.getState().play(song), []);
+  const pause = useCallback(() => usePlayerStore.getState().pause(), []);
+  const next = useCallback(() => debouncedAction(() => usePlayerStore.getState().next()), [debouncedAction]);
+  const prev = useCallback(() => debouncedAction(() => usePlayerStore.getState().prev()), [debouncedAction]);
+  const seek = useCallback((seconds) => usePlayerStore.getState().seek(seconds), []);
+  const setVolume = useCallback((v) => usePlayerStore.getState().setVolume(v), []);
+  const setQueue = useCallback((q) => usePlayerStore.getState().setQueue(q), []);
+  const addToQueue = useCallback((song) => usePlayerStore.getState().addToQueue(song), []);
+  const setShuffle = useCallback((e) => usePlayerStore.getState().setShuffle(e), []);
+  const setRepeatMode = useCallback((m) => usePlayerStore.getState().setRepeatMode(m), []);
 
   const enableSmartShuffle = useCallback(async (songs, options = {}) => {
-    // S6: when called with no songs arg, store resolves to originalQueue
-    await store.enableSmartShuffle(songs, { ...options, affinityData });
+    await usePlayerStore.getState().enableSmartShuffle(songs, options);
     setAffinityRefresh(prev => prev + 1);
-  }, [store, affinityData]);
+  }, []);
 
   const enableV2Shuffle = useCallback(async (songs, options = {}) => {
-    await store.enableV2Shuffle(songs, options);
-  }, [store]);
+    await usePlayerStore.getState().enableV2Shuffle(songs, options);
+  }, []);
 
-  const enableDumbShuffle = useCallback(() => store.enableDumbShuffle(), [store]);
-  const disableShuffle = useCallback(() => store.disableShuffle(), [store]);
+  const enableDumbShuffle = useCallback(() => usePlayerStore.getState().enableDumbShuffle(), []);
+  const disableShuffle = useCallback(() => usePlayerStore.getState().disableShuffle(), []);
 
   return {
-    queue: store.queue,
-    currentSong: store.currentSong,
-    isPlaying: store.isPlaying,
-    currentIndex: store.currentIndex,
-    position: store.position,
-    duration: store.duration,
-    volume: store.volume,
-    shuffleMode: store.shuffleMode,
-    shufflePending: store.shufflePending,   // C3: drives loading UI on AI✦ button
-    repeatMode: store.repeatMode,
+    queue,
+    currentSong,
+    isPlaying,
+    currentIndex,
+    volume,
+    shuffleMode,
+    shufflePending,
+    repeatMode,
 
     play,
     pause,

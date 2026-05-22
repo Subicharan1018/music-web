@@ -10,6 +10,9 @@ import { useUIStore } from '../store/uiStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SongRow } from '../components/library/SongRow';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
+import * as reactWindowPkg from 'react-window';
+const { FixedSizeList } = reactWindowPkg;
+import { SONG_ROW_HEIGHT } from '../lib/constants';
 
 export const FavoritesPage = () => {
   const client = useSubsonic();
@@ -92,15 +95,23 @@ export const FavoritesPage = () => {
 
           {activeTab === 'songs' && (
             <div className="flex flex-col">
-              {starred.songs.map((song, index) => (
-                <SongRow 
-                  key={`starred-${song.id}-${index}`} 
-                  song={song} 
-                  index={index} 
-                  contextSongs={starred.songs}
-                  context="favorites" 
-                />
-              ))}
+              <FixedSizeList
+                height={Math.min(600, starred.songs.length * SONG_ROW_HEIGHT)}
+                width="100%"
+                itemCount={starred.songs.length}
+                itemSize={SONG_ROW_HEIGHT}
+              >
+                {({ index, style }) => (
+                  <SongRow 
+                    style={style}
+                    key={`starred-${starred.songs[index].id}-${index}`} 
+                    song={starred.songs[index]} 
+                    index={index} 
+                    contextSongs={starred.songs}
+                    context="favorites" 
+                  />
+                )}
+              </FixedSizeList>
             </div>
           )}
         </div>

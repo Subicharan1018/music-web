@@ -29,6 +29,8 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
+    "react-virtualized-auto-sizer": "^2.0.3",
+    "react-window": "^2.2.7",
     "recharts": "^3.8.1",
     "tailwind-merge": "^1.14.0",
     "tailwindcss": "^4.3.0",
