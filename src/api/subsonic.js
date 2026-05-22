@@ -6,6 +6,7 @@
 
 import md5 from 'md5';
 import { ENDPOINTS } from './endpoints';
+import { useSettingsStore } from '../store/settingsStore';
 
 export class NetworkException extends Error {
   constructor(message) {
@@ -267,7 +268,21 @@ class SubsonicClient {
   // Stream URL gets a fresh token each call — prevents browser from serving
   // a cached stream response when a different song is requested.
   stream(songId, options = {}) {
-    return this._buildUrl(ENDPOINTS.STREAM, { id: songId, ...options }, true);
+    const settings = useSettingsStore.getState();
+    const transcodeFormat = settings.transcodeFormat || 'raw';
+    const maxBitRate = settings.transcodeMaxBitRate || 0;
+
+    const defaultOptions = {};
+    if (transcodeFormat !== 'raw') {
+      defaultOptions.format = transcodeFormat;
+      if (maxBitRate > 0) {
+        defaultOptions.maxBitRate = maxBitRate;
+      }
+    } else {
+      defaultOptions.format = 'raw';
+    }
+
+    return this._buildUrl(ENDPOINTS.STREAM, { id: songId, ...defaultOptions, ...options }, true);
   }
 
   getStreamUrl(songId, options = {}) {

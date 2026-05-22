@@ -5,7 +5,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paletteService } from '../../services/PaletteService';
-import { usePlayAction } from '../../hooks/usePlayAction';
+import { usePlayAction } from '../../hooks/player/usePlayAction';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { Play } from 'lucide-react';

@@ -3,7 +3,7 @@
  * Encapsulates playback logic to ensure setQueue is only called here.
  */
 
-import { usePlayerStore } from '../store/playerStore';
+import { usePlayerStore } from '../../store/playerStore';
 
 export const usePlayAction = () => {
   const setQueue = usePlayerStore(state => state.setQueue);

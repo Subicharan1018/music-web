@@ -4,9 +4,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LyricsService } from '../services/LyricsService';
-import { getCurrentLineIndex } from '../services/LrcParser';
-import { useSubsonic } from './useSubsonic';
+import { LyricsService } from '../../services/LyricsService';
+import { getCurrentLineIndex } from '../../services/LrcParser';
+import { useSubsonic } from '../useSubsonic';
 
 export const useLyrics = (song, positionMs) => {
   const client = useSubsonic();

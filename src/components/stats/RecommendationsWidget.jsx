@@ -6,7 +6,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Play, RefreshCw } from 'lucide-react';
-import { usePlayAction } from '../../hooks/usePlayAction';
+import { usePlayAction } from '../../hooks/player/usePlayAction';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { recommendationService } from '../../services/RecommendationService';
 import gsap from 'gsap';

@@ -4,7 +4,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useSubsonic } from '../../hooks/useSubsonic';
-import { usePlayAction } from '../../hooks/usePlayAction';
+import { usePlayAction } from '../../hooks/player/usePlayAction';
 import { usePlayerStore } from '../../store/playerStore';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useSortable } from '@dnd-kit/sortable';

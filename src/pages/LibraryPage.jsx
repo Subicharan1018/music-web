@@ -9,7 +9,7 @@ import { useLibraryStore } from '../store/libraryStore';
 import { useAffinityStore } from '../store/affinityStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SkeletonCard } from '../components/shared/SkeletonCard';
-import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 import { RecommendationsWidget } from '../components/stats/RecommendationsWidget';
 import { recommendationService } from '../services/RecommendationService';
 

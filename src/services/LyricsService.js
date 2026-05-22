@@ -4,57 +4,41 @@
  */
 
 import { isLrcFormat, parseLrc, parsePlain } from './LrcParser';
+import { cacheService } from './CacheService';
 
 const MAX_CACHE = 100;
 
 export class LyricsService {
   constructor({ subsonicClient }) {
     this.subsonicClient = subsonicClient || null;
-    this.cache = new Map();
-  }
-
-  _touchCache(key, value) {
-    if (this.cache.has(key)) this.cache.delete(key);
-    this.cache.set(key, value);
-    if (this.cache.size > MAX_CACHE) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-  }
-
-  clearCache() {
-    this.cache.clear();
   }
 
   async getLyrics(song) {
     if (!song) return null;
-    const key = song.id || `${song.artist || ''}-${song.title || ''}-${song.album || ''}-${song.duration || ''}`;
+    const key = `lyrics_${song.id || `${song.artist || ''}-${song.title || ''}-${song.album || ''}-${song.duration || ''}`}`;
 
-    if (this.cache.has(key)) {
-      const cached = this.cache.get(key);
-      this._touchCache(key, cached);
-      return cached;
-    }
+    const cached = await cacheService.get(key);
+    if (cached) return cached;
 
     const fromLrcLib = await this._getFromLrcLib(song);
     if (fromLrcLib) {
-      this._touchCache(key, fromLrcLib);
+      cacheService.set(key, fromLrcLib);
       return fromLrcLib;
     }
 
     const fromStructured = await this._getFromSubsonicStructured(song);
     if (fromStructured) {
-      this._touchCache(key, fromStructured);
+      cacheService.set(key, fromStructured);
       return fromStructured;
     }
 
     const fromPlain = await this._getFromSubsonicPlain(song);
     if (fromPlain) {
-      this._touchCache(key, fromPlain);
+      cacheService.set(key, fromPlain);
       return fromPlain;
     }
 
-    this._touchCache(key, null);
+    cacheService.set(key, null);
     return null;
   }
 

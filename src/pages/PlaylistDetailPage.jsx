@@ -10,7 +10,7 @@ import { useSubsonic } from '../hooks/useSubsonic';
 import { usePlaylistStore } from '../store/playlistStore';
 import { useUIStore } from '../store/uiStore';
 import { usePlayerStore } from '../store/playerStore';
-import { usePlayAction } from '../hooks/usePlayAction';
+import { usePlayAction } from '../hooks/player/usePlayAction';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { PlaylistMusicPortfolio } from '../components/playlist/PlaylistMusicPortfolio';
 import { Play, Sparkles, Trash2, ArrowLeft, Loader2 } from 'lucide-react';

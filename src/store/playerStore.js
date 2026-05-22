@@ -67,6 +67,7 @@ const DEFAULT_STATE = {
   currentIndex: 0,
   currentSong: null,
   volume: 1.0,
+  lastVolume: 1.0,
   shuffleMode: 'none',    // 'none' | 'dumb' | 'smart' | 'smart-v2'
   originalQueue: [],
   repeatMode: 'none',
@@ -253,6 +254,15 @@ export const usePlayerStore = create((set, get) => ({
     set({ isPlaying: false });
   },
 
+  togglePlayPause: () => {
+    const state = get();
+    if (state.isPlaying) {
+      state.pause();
+    } else {
+      state.play();
+    }
+  },
+
   next: (autoAdvanced = false) => {
     const state = get();
     const { queue, currentIndex, repeatMode, audioEngine, scrobbleService, subsonicClient, shuffleMode } = state;
@@ -377,10 +387,34 @@ export const usePlayerStore = create((set, get) => ({
     set({ position: seconds });
   },
 
+  seekRelative: (deltaSeconds) => {
+    const { audioEngine, scrobbleService, position } = get();
+    if (!audioEngine) return;
+    const duration = audioEngine.getDuration() || 0;
+    const target = Math.max(0, Math.min(position + deltaSeconds, duration));
+    audioEngine.seek(target);
+    scrobbleService?.onSeek();
+    set({ position: target });
+  },
+
   setVolume: (volume) => {
     const { audioEngine, currentSong } = get();
     audioEngine?.setVolume(volume, currentSong);
     set({ volume });
+  },
+
+  toggleMute: () => {
+    const state = get();
+    const { audioEngine, currentSong, volume, lastVolume } = state;
+    
+    if (volume > 0) {
+      audioEngine?.setVolume(0, currentSong);
+      set({ volume: 0, lastVolume: volume });
+    } else {
+      const targetVol = lastVolume > 0 ? lastVolume : 1.0;
+      audioEngine?.setVolume(targetVol, currentSong);
+      set({ volume: targetVol });
+    }
   },
 
   setGainValue: (gainValue) => set({ gainValue }),
@@ -739,6 +773,27 @@ export const usePlayerStore = create((set, get) => ({
 
   // ── Misc ───────────────────────────────────────────────────────────────────
   setRepeatMode: (mode) => set({ repeatMode: mode }),
+  
+  cycleRepeatMode: () => {
+    const { repeatMode } = get();
+    const nextMode = repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none';
+    set({ repeatMode: nextMode });
+  },
+  
+  cycleShuffleMode: () => {
+    const state = get();
+    // Assuming simple cycle: none -> dumb -> smart -> none. (Ignoring smart-v2 since it's experimental)
+    if (state.shuffleMode === 'none') {
+      state.enableDumbShuffle();
+    } else if (state.shuffleMode === 'dumb') {
+      // It's difficult to automatically trigger smart shuffle here since we don't know the intended playlist context.
+      // But we can trigger it and it will pick a random seed from current pool.
+      state.enableSmartShuffle();
+    } else {
+      state.disableShuffle();
+    }
+  },
+
   setPosition: (position) => set({ position }),
   setDuration: (duration) => set({ duration }),
 }));

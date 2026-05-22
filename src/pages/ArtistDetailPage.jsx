@@ -9,7 +9,7 @@ import { useLibraryStore } from '../store/libraryStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SongRow } from '../components/library/SongRow';
 import { SkeletonCard } from '../components/shared/SkeletonCard';
-import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 import { useRef } from 'react';
 
 export const ArtistDetailPage = () => {

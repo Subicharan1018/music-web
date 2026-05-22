@@ -5,7 +5,7 @@ import { AlbumCard } from '../components/library/AlbumCard';
 import { SongRow } from '../components/library/SongRow';
 import { useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
-import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 
 export const SearchPage = () => {
   const [query, setQuery] = useState('');
@@ -139,6 +139,7 @@ export const SearchPage = () => {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your library..."
           className="w-full bg-transparent border-0 border-b border-ink/30 focus:border-ink/60 outline-none font-sans text-2xl py-2 text-ink placeholder:text-ink-mute/50 transition-colors"
+          data-search-input="true"
           autoFocus
         />
       </div>

@@ -85,7 +85,30 @@ const AuthGuard = ({ children }) => {
 };
 
 function App() {
-  const { isConfigured } = useSettingsStore();
+  const { isConfigured, theme } = useSettingsStore();
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => {
+      const isDark =
+        theme === 'dark' ||
+        (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+      }
+    };
+
+    updateTheme();
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => updateTheme();
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    }
+  }, [theme]);
 
   return (
     <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center"><LoadingSpinner /></div>}>

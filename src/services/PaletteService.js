@@ -4,11 +4,11 @@
  */
 
 import { getColorSync, getPaletteSync } from 'colorthief';
+import { cacheService } from './CacheService';
 
 export class PaletteService {
   constructor(maxSize = 50) {
     this.maxSize = maxSize;
-    this.cache = new Map();
     // RC-04: In-flight promise deduplication. Prevents concurrent extractions
     // for the same URL from racing and resolving in wrong order.
     this._pending = new Map();
@@ -22,13 +22,10 @@ export class PaletteService {
   async getPalette(coverArtUrl) {
     if (!coverArtUrl) return this.fallback;
 
-    // LRU Cache Check
-    if (this.cache.has(coverArtUrl)) {
-      const value = this.cache.get(coverArtUrl);
-      this.cache.delete(coverArtUrl);
-      this.cache.set(coverArtUrl, value);
-      return value;
-    }
+    // Cache Check
+    const cacheKey = `palette_${coverArtUrl}`;
+    const cached = await cacheService.get(cacheKey);
+    if (cached) return cached;
 
     // RC-04: Return in-flight promise instead of starting a competing extraction
     if (this._pending.has(coverArtUrl)) {
@@ -48,7 +45,7 @@ export class PaletteService {
               secondary: palette[1].hex(),
               muted: palette[2].hex()
             };
-            this._setToCache(coverArtUrl, result);
+            cacheService.set(cacheKey, result);
             resolve(result);
           } else {
             const dominant = getColorSync(img);
@@ -58,23 +55,23 @@ export class PaletteService {
                 secondary: this.fallback.secondary,
                 muted: this.fallback.muted
               };
-              this._setToCache(coverArtUrl, result);
+              cacheService.set(cacheKey, result);
               resolve(result);
             } else {
-              this._setToCache(coverArtUrl, this.fallback);
+              cacheService.set(cacheKey, this.fallback);
               resolve(this.fallback);
             }
           }
         } catch (e) {
           console.error("ColorThief extraction failed", e);
-          this._setToCache(coverArtUrl, this.fallback);
+          cacheService.set(cacheKey, this.fallback);
           resolve(this.fallback);
         }
       };
 
       img.onerror = () => {
         this._pending.delete(coverArtUrl);
-        this._setToCache(coverArtUrl, this.fallback);
+        cacheService.set(cacheKey, this.fallback);
         resolve(this.fallback);
       };
 
@@ -88,16 +85,7 @@ export class PaletteService {
     return promise;
   }
 
-  _setToCache(key, value) {
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-    this.cache.set(key, value);
-  }
-
   clear() {
-    this.cache.clear();
     this._pending.clear();
   }
 }

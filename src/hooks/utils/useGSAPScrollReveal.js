@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { gsap } from '../lib/gsap';
+import { gsap } from '../../lib/gsap';
 
 /**
  * Hook to apply GSAP ScrollTrigger reveal animations to elements.

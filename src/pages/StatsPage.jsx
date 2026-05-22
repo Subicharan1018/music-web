@@ -10,15 +10,13 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useAffinityStore } from '../store/affinityStore';
 import { useSubsonic } from '../hooks/useSubsonic';
-import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
-import { usePlayAction } from '../hooks/usePlayAction';
+import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
+import { usePlayAction } from '../hooks/player/usePlayAction';
 import { Flame, Play, RefreshCw, Server, AlertCircle, Settings2, X, Info } from 'lucide-react';
 import { useAIShuffleStore } from '../store/aiShuffleStore';
 import { useListeningStatsStore, ERR_NOT_CONFIGURED, ERR_ENDPOINT_404, ERR_NETWORK } from '../store/listeningStatsStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { Link } from 'react-router-dom';
-import { PingingDotChart } from '../components/ui/PingingDotChart';
-import { GlowingRadarChart } from '../components/ui/GlowingRadarChart';
 
 // Recharts-heavy component loaded in its own chunk
 const DailyListeningChart = lazy(() =>
@@ -309,14 +307,6 @@ export const StatsPage = () => {
       {/* Nº 07 · SERVER LISTENING STATS */}
       <ServerListeningStats />
 
-      {/* Nº 08 · VISUAL ANALYTICS */}
-      <div className="mb-14 reveal-item">
-        <SectionHeader num="Nº 08" title="Visual Analytics" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <PingingDotChart />
-          <GlowingRadarChart />
-        </div>
-      </div>
 
       {/* Nº 09 · LISTENING HISTORY */}
       <ServerListeningHistory />

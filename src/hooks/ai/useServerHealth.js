@@ -4,7 +4,7 @@
  * Start/stop polling is managed in AppShell.
  */
 
-import { useAIShuffleStore } from '../store/aiShuffleStore';
+import { useAIShuffleStore } from '../../store/aiShuffleStore';
 
 export const useServerHealth = () => {
   const health      = useAIShuffleStore((s) => s.health);

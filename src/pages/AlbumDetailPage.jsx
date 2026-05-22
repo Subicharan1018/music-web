@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSubsonic } from '../hooks/useSubsonic';
 import { useLibraryStore } from '../store/libraryStore';
-import { usePlayAction } from '../hooks/usePlayAction';
+import { usePlayAction } from '../hooks/player/usePlayAction';
 import { paletteService } from '../services/PaletteService';
 import { SongRow } from '../components/library/SongRow';
 import { SkeletonRow } from '../components/shared/SkeletonRow';
-import { useGSAPScrollReveal } from '../hooks/useGSAPScrollReveal';
+import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 import { useRef } from 'react';
 
 export const AlbumDetailPage = () => {

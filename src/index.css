@@ -36,6 +36,18 @@
   --chart-5: 27 87% 67%;
 }
 
+.light {
+  --color-paper: #fafafa;
+  --color-paper-warm: #f5f5f5;
+  --color-paper-dark: #e5e5e5;
+  --color-paper-bone: #e5e5e5;
+
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #262626;
+  --color-ink-mute: #525252;
+  --color-ink-faint: #8a8a8a;
+}
+
 @layer base {
   * {
     box-sizing: border-box;

@@ -54,12 +54,18 @@ export const useSettingsStore = create(
       // Default false here is only used on a completely fresh install (no localStorage entry).
       v2ShuffleEnabled: false,
 
-      transcodeFormat:  'mp3',
-      transcodeBitrate: '320',
+      transcodeFormat:  'raw',
+      transcodeMaxBitRate: 0,
       replayGainMode:   'none',
       replayGainPreamp: '0',
+      gaplessPlayback:  false,
+      crossfadeEnabled: false,
+      crossfadeDuration: 3,
+      cacheProvider:    'indexeddb',
+      cacheMaxSizeMb:   500,
       scrobblingEnabled: true,
-      theme: 'dark',
+      theme: 'system',
+      accentColor: 'coral',
 
       // ── Actions ───────────────────────────────────────────────────────────
       setServerConfig: (config) => {
@@ -105,11 +111,17 @@ export const useSettingsStore = create(
       partialize: (state) => ({
         v2ShuffleEnabled: state.v2ShuffleEnabled,
         transcodeFormat:  state.transcodeFormat,
-        transcodeBitrate: state.transcodeBitrate,
+        transcodeMaxBitRate: state.transcodeMaxBitRate,
         replayGainMode:   state.replayGainMode,
         replayGainPreamp: state.replayGainPreamp,
+        gaplessPlayback:  state.gaplessPlayback,
+        crossfadeEnabled: state.crossfadeEnabled,
+        crossfadeDuration: state.crossfadeDuration,
+        cacheProvider:    state.cacheProvider,
+        cacheMaxSizeMb:   state.cacheMaxSizeMb,
         scrobblingEnabled: state.scrobblingEnabled,
         theme:            state.theme,
+        accentColor:      state.accentColor,
       }),
       onRehydrateStorage: () => (restoredState, error) => {
         if (error) {

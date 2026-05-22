@@ -17,6 +17,7 @@ import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { ToastContainer } from '../shared/Toast';
 import { PlaylistBackground } from '../playlist/PlaylistBackground';
 import { useState } from 'react';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 export const AppShell = () => {
   const { sidebarCollapsed } = useUIStore();
@@ -31,6 +32,9 @@ export const AppShell = () => {
   const location = useLocation();
   const isPlaylistRoute = location.pathname.startsWith('/playlist/');
   const [playlistBgUrl, setPlaylistBgUrl] = useState('');
+
+  // Register global keyboard shortcuts
+  useKeyboardShortcuts();
 
   // Initialize the AudioEngine once the client is available
   useEffect(() => {
