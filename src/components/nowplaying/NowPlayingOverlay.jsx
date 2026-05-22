@@ -15,6 +15,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useLyrics } from '../../hooks/useLyrics';
 import { AddToPlaylistDialog } from '../playlists/AddToPlaylistDialog';
+import { GenerativeArtScene } from '../ui/GenerativeArtScene';
 import { gsap } from '../../lib/gsap';
 import { useAIShuffleStore } from '../../store/aiShuffleStore';
 import { useServerHealth } from '../../hooks/useServerHealth';
@@ -356,8 +357,8 @@ export const NowPlayingOverlay = () => {
     <div
       ref={containerRef}
       className={`fixed inset-0 z-[60] flex flex-col transition-transform duration-[350ms] ease-[cubic-bezier(0.32,0,0,1)] np-root ${nowPlayingExpanded ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
-      aria-hidden={!nowPlayingExpanded}
     >
+      <GenerativeArtScene isPlaying={isPlaying} />
 
       {/* ── Top bar ── */}
       <div className="relative z-10 flex items-center justify-between px-8 pt-5 pb-3 flex-shrink-0">
@@ -391,121 +392,16 @@ export const NowPlayingOverlay = () => {
         </button>
       </div>
 
-      {/* ── Two-column body ── */}
-      <div className="relative z-10 flex-1 min-h-0 flex gap-0 px-4 pb-6">
-
-        {/* ══ LEFT — Player ══ */}
-        <div className="flex flex-col items-center justify-center flex-1 min-w-0 px-8 gap-7">
-
-          {/* Vinyl Art & Waveform */}
-          <div className="np-reveal flex-shrink-0 flex flex-col items-center justify-center">
-            <VinylArt coverUrl={coverUrl} isPlaying={isPlaying} />
-            <LiveWaveform isPlaying={isPlaying} />
-          </div>
-
-          {/* Track info */}
-          <div className="np-reveal w-full max-w-xs mt-2">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-3xl text-white truncate leading-tight drop-shadow-lg" style={{ fontFamily: '"DM Serif Display", serif' }}>
-                  {currentSong?.title || 'No track selected'}
-                </h1>
-                <p className="font-mono text-[12px] text-white/50 tracking-[0.05em] mt-1.5 truncate">
-                  {currentSong?.artist || '—'}
-                </p>
-                {currentSong?.album && (
-                  <p className="font-sans text-[11px] text-white/30 mt-0.5 truncate">{currentSong.album}</p>
-                )}
-              </div>
-              <button type="button" onClick={handleAI}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all hover:scale-105 active:scale-95 mt-1"
-                style={{
-                  background: shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.25)' : 'rgba(227,66,98,0.25)',
-                  border: `1px solid ${shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.45)' : 'rgba(227,66,98,0.45)'}`,
-                  color: shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262'
-                }}
-                aria-label="AI next">
-                <Sparkles size={10} /><span>{shuffleMode === 'smart-v2' ? 'V2✦' : 'AI✦'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="np-reveal w-full max-w-xs mt-4 relative">
-            <div className="progress-track">
-              <div className="progress-fill" style={{ width: `${(position / duration) * 100 || 0}%` }} />
-            </div>
-            <input ref={rangeRef} type="range" className="absolute inset-x-0 -inset-y-2 w-full h-[20px] opacity-0 cursor-pointer" min="0" max="100" step="0.05" defaultValue="0"
-              onMouseDown={onRangeDown} onTouchStart={onRangeDown} onMouseUp={onRangeUp} onTouchEnd={onRangeUp} onChange={onRangeChange} aria-label="Seek" />
-            <div className="flex justify-between mt-2">
-              <span className="text-[10px] font-mono text-white/30 tabular-nums">{fmt(position)}</span>
-              <span className="text-[10px] font-mono text-white/30 tabular-nums">{fmt(duration)}</span>
-            </div>
-          </div>
-
-          {/* Transport */}
-          <div className="np-reveal w-full max-w-xs mt-2">
-            <div className="flex items-center justify-between">
-              <button type="button" onClick={toggleShuffle}
-                style={{ color: shuffleColor || 'rgba(255,255,255,0.35)' }}
-                className="transition-all hover:scale-110 active:scale-95 hover:text-white/70" aria-label="Shuffle">
-                <Shuffle size={19} />
-              </button>
-              <button type="button" onClick={() => prev()}
-                className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95" aria-label="Previous">
-                <SkipBack size={28} className="fill-current" />
-              </button>
-              <button type="button" onClick={() => isPlaying ? pause() : play()}
-                className="play-btn-obsidian"
-                aria-label={isPlaying ? 'Pause' : 'Play'}>
-                {isPlaying ? <Pause size={24} className="fill-white text-white" /> : <Play size={24} className="fill-white text-white ml-1" />}
-              </button>
-              <button type="button" onClick={() => next()}
-                className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95" aria-label="Next">
-                <SkipForward size={28} className="fill-current" />
-              </button>
-              <button type="button" onClick={cycleRepeat}
-                style={{ color: repeatMode !== 'none' ? '#e34262' : 'rgba(255,255,255,0.35)' }}
-                className="transition-all hover:scale-110 active:scale-95" aria-label="Repeat">
-                <RepeatIcon size={19} />
-              </button>
-            </div>
-
-            {/* Volume */}
-            <div className="flex items-center gap-3 mt-8 mb-2 relative">
-              <VolumeX size={13} className="text-white/25 flex-shrink-0" />
-              <div className="vol-track-obsidian relative flex-1">
-                <div className="vol-fill-obsidian" style={{ width: `${volume * 100}%` }} />
-                <input ref={volRef} type="range" className="absolute -inset-y-2 inset-x-0 w-full opacity-0 cursor-pointer" min="0" max="100" step="1"
-                  defaultValue={Math.round(volume * 100)}
-                  onChange={(e) => { const v = parseFloat(e.target.value) / 100; setVolume(v); }}
-                  aria-label="Volume" />
-              </div>
-              <Volume2 size={13} className="text-white/25 flex-shrink-0" />
-            </div>
-
-            {(shuffleMode === 'smart-v2' ? v2SessionStatus : sessionStatus) && (
-              <div className="flex items-center justify-center gap-3 mt-4 font-mono text-[9px] text-white/20 uppercase tracking-[0.15em]">
-                <span>Session · {shuffleMode === 'smart-v2' ? v2SessionStatus?.songCount : sessionStatus?.songCount} songs</span>
-                <button type="button" onClick={handleResetSession} className="hover:text-white/45 underline underline-offset-2">Reset</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Divider ── */}
-        <div className="w-px bg-white/10 flex-shrink-0 my-6 mx-3" />
-
-        {/* ══ RIGHT — Lyrics / Queue ══ */}
-        <div className="np-reveal flex flex-col w-[360px] flex-shrink-0 min-h-0">
-
-          {/* TabPills Toggle header */}
+      {/* ── Main Viewport (Overlay Layout) ── */}
+      <div className="absolute inset-0 pointer-events-none z-10 flex flex-col">
+        
+        {/* ══ RIGHT — Lyrics / Queue (Floating) ══ */}
+        <div className="absolute top-24 right-8 bottom-[180px] w-[360px] flex flex-col pointer-events-auto np-reveal">
           <div className="flex items-center justify-center pt-2 pb-3 flex-shrink-0">
             <TabPills showLyrics={showLyrics} onChange={setShowLyrics} />
           </div>
-
-          {/* Panel — NO background, NO glass, pure content on the fluid bg */}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          {/* Panel Background added slightly to separate text from complex 3D wireframe, but kept sleek and dark */}
+          <div className="flex-1 min-h-0 overflow-hidden bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 shadow-2xl">
             {showLyrics ? (
               <LyricsPanel
                 lines={lines} currentLineIndex={currentLineIndex} isSynced={isSynced}
@@ -516,6 +412,113 @@ export const NowPlayingOverlay = () => {
               <QueuePanel queue={queue} currentIndex={currentIndex ?? 0} client={client} />
             )}
           </div>
+        </div>
+
+        {/* ══ BOTTOM — Player Bar ══ */}
+        <div className="absolute bottom-0 left-0 right-0 px-10 pb-8 pt-24 flex items-end justify-between pointer-events-auto bg-gradient-to-t from-[#0a0808] via-[#0a0808]/80 to-transparent z-20">
+          
+          {/* LEFT: Vinyl & Info */}
+          <div className="flex items-center gap-6 w-[30%]">
+            <div className="relative flex-shrink-0" style={{ width: '112px', height: '112px' }}>
+              <div style={{ transform: 'scale(0.4)', transformOrigin: 'top left' }} className="absolute top-0 left-0">
+                 <VinylArt coverUrl={coverUrl} isPlaying={isPlaying} />
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 pb-1">
+               <h1 className="text-3xl text-white truncate drop-shadow-md" style={{ fontFamily: '"DM Serif Display", serif' }}>
+                 {currentSong?.title || 'No track selected'}
+               </h1>
+               <p className="font-mono text-[12px] text-[#e34262] tracking-[0.05em] mt-1.5 truncate drop-shadow">
+                 {currentSong?.artist || '—'}
+               </p>
+               {currentSong?.album && (
+                 <p className="font-sans text-[10px] text-white/30 mt-1 truncate">{currentSong.album}</p>
+               )}
+            </div>
+          </div>
+
+          {/* CENTER: Controls */}
+          <div className="flex flex-col items-center gap-5 w-[40%] pb-2">
+             <div className="flex items-center gap-8">
+                <button type="button" onClick={toggleShuffle}
+                  style={{ color: shuffleColor || 'rgba(255,255,255,0.35)' }}
+                  className="transition-all hover:scale-110 active:scale-95 hover:text-white/70" aria-label="Shuffle">
+                  <Shuffle size={19} />
+                </button>
+                <button type="button" onClick={() => prev()}
+                  className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95" aria-label="Previous">
+                  <SkipBack size={24} className="fill-current" />
+                </button>
+                <button type="button" onClick={() => isPlaying ? pause() : play()}
+                  className="w-14 h-14 rounded-full flex items-center justify-center bg-[#e34262] text-white shadow-[0_0_20px_rgba(227,66,98,0.4)] transition-all hover:scale-105 active:scale-95 hover:bg-[#ff4f73]"
+                  aria-label={isPlaying ? 'Pause' : 'Play'}>
+                  {isPlaying ? <Pause size={22} className="fill-white" /> : <Play size={22} className="fill-white ml-1" />}
+                </button>
+                <button type="button" onClick={() => next()}
+                  className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95" aria-label="Next">
+                  <SkipForward size={24} className="fill-current" />
+                </button>
+                <button type="button" onClick={cycleRepeat}
+                  style={{ color: repeatMode !== 'none' ? '#e34262' : 'rgba(255,255,255,0.35)' }}
+                  className="transition-all hover:scale-110 active:scale-95" aria-label="Repeat">
+                  <RepeatIcon size={19} />
+                </button>
+             </div>
+             
+             {/* Progress */}
+             <div className="w-full max-w-md relative flex items-center gap-4">
+                <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(position)}</span>
+                <div className="flex-1 relative group h-2 flex items-center">
+                  <div className="absolute inset-x-0 h-[3px] bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#e34262] relative" style={{ width: `${(position / duration) * 100 || 0}%` }}>
+                       <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  <input ref={rangeRef} type="range" className="absolute inset-x-0 -inset-y-2 w-full h-[20px] opacity-0 cursor-pointer z-10" min="0" max="100" step="0.05" defaultValue="0"
+                    onMouseDown={onRangeDown} onTouchStart={onRangeDown} onMouseUp={onRangeUp} onTouchEnd={onRangeUp} onChange={onRangeChange} aria-label="Seek" />
+                </div>
+                <span className="text-[10px] font-mono text-white/40 tabular-nums">{fmt(duration)}</span>
+             </div>
+          </div>
+
+          {/* RIGHT: Extra */}
+          <div className="flex flex-col items-end justify-end gap-5 w-[30%] pb-3">
+             <div className="flex items-center gap-5">
+               <div className="-mt-4"><LiveWaveform isPlaying={isPlaying} /></div>
+               <button type="button" onClick={handleAI}
+                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
+                 style={{
+                   background: shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.25)' : 'rgba(227,66,98,0.25)',
+                   border: `1px solid ${shuffleMode === 'smart-v2' ? 'rgba(168,85,247,0.45)' : 'rgba(227,66,98,0.45)'}`,
+                   color: shuffleMode === 'smart-v2' ? '#d8b4fe' : '#e34262'
+                 }}
+                 aria-label="AI next">
+                 <Sparkles size={11} /><span>{shuffleMode === 'smart-v2' ? 'V2✦' : 'AI✦'}</span>
+               </button>
+             </div>
+             
+             {/* Volume & Session */}
+             <div className="flex items-center gap-6">
+                {(shuffleMode === 'smart-v2' ? v2SessionStatus : sessionStatus) && (
+                  <div className="flex items-center gap-2 font-mono text-[9px] text-white/30 uppercase tracking-widest">
+                    <span>{shuffleMode === 'smart-v2' ? v2SessionStatus?.songCount : sessionStatus?.songCount} AI Queue</span>
+                    <button type="button" onClick={handleResetSession} className="hover:text-[#e34262] transition-colors underline underline-offset-2">Reset</button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 w-28 relative group">
+                  <VolumeX size={12} className="text-white/30" />
+                  <div className="relative flex-1 h-[3px] bg-white/10 rounded-full overflow-hidden flex items-center">
+                    <div className="h-full bg-white/50" style={{ width: `${volume * 100}%` }} />
+                    <input ref={volRef} type="range" className="absolute -inset-y-2 inset-x-0 w-full opacity-0 cursor-pointer z-10" min="0" max="100" step="1"
+                      defaultValue={Math.round(volume * 100)}
+                      onChange={(e) => { const v = parseFloat(e.target.value) / 100; setVolume(v); }}
+                      aria-label="Volume" />
+                  </div>
+                  <Volume2 size={12} className="text-white/30" />
+                </div>
+             </div>
+          </div>
+
         </div>
       </div>
 
