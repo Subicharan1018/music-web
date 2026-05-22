@@ -9,9 +9,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '../components/shared/Button';
 import { createSubsonicClient, NetworkException, AuthException, ServerException } from '../api/subsonic';
 import { ExternalLink, Music, RefreshCw, Server, AlertCircle, Settings2, Download, Trash2, Key } from 'lucide-react';
-import { useServerHealth } from '../hooks/ai/useServerHealth';
-import { useAIShuffleStore } from '../store/aiShuffleStore';
-import { ShuffleApiService, startedAtFormatted } from '../services/ShuffleApiService';
+import { useV2ShuffleStore } from '../store/v2ShuffleStore';
+import { V2ShuffleApiService } from '../services/V2ShuffleApiService';
 import { PillToggle } from '../components/shared/PillToggle';
 import { cacheService } from '../services/CacheService';
 import { useAffinityStore } from '../store/affinityStore';
@@ -50,7 +49,7 @@ const StatusBanner = ({ result }) =>
 export const SettingsPage = () => {
   const {
     serverUrl, username: storeUsername, password: storePassword,
-    localShuffleUrl,
+    v2ShuffleUrl,
     lastfmApiKey: storeLastfmApiKey, lastfmApiSecret: storeLastfmApiSecret, lastfmSessionKey, lastfmUsername, scrobblingEnabled,
     transcodeFormat, transcodeMaxBitRate, replayGainMode, replayGainPreamp,
     gaplessPlayback, crossfadeEnabled, crossfadeDuration,
@@ -66,7 +65,7 @@ export const SettingsPage = () => {
   const [url, setUrl] = useState(serverUrl || '');
   const [username, setUsername] = useState(storeUsername || '');
   const [password, setPassword] = useState(storePassword || '');
-  const [shuffleUrl, setShuffleUrl] = useState(localShuffleUrl || '');
+  const [shuffleUrl, setShuffleUrl] = useState(v2ShuffleUrl || '');
   const [lastfmApiKey, setLastfmApiKey] = useState(storeLastfmApiKey || '');
   const [lastfmApiSecret, setLastfmApiSecret] = useState(storeLastfmApiSecret || '');
 
@@ -78,22 +77,20 @@ export const SettingsPage = () => {
   const [aiTestResult, setAiTestResult] = useState(null);
   const [cacheUsedMb, setCacheUsedMb] = useState(0);
 
-  const { isConfigured, isHealthy, health } = useServerHealth();
-  const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
-  const resetSession = useAIShuffleStore((s) => s.resetSession);
+  const { isConfigured, isHealthy, health, sessionStatus, resetSession } = useV2ShuffleStore();
   const affinityReset = useAffinityStore((s) => s.reset);
 
   useEffect(() => {
     setUrl(serverUrl || '');
     setUsername(storeUsername || '');
     setPassword(storePassword || '');
-    setShuffleUrl(localShuffleUrl || '');
+    setShuffleUrl(v2ShuffleUrl || '');
     setLastfmApiKey(storeLastfmApiKey || '');
     setLastfmApiSecret(storeLastfmApiSecret || '');
     
     // Fetch cache size
     cacheService.getUsedMb().then(setCacheUsedMb);
-  }, [serverUrl, storeUsername, storePassword, localShuffleUrl, storeLastfmApiKey, storeLastfmApiSecret]);
+  }, [serverUrl, storeUsername, storePassword, v2ShuffleUrl, storeLastfmApiKey, storeLastfmApiSecret]);
 
   useEffect(() => {
     const result = searchParams.get('lastfm');
@@ -124,7 +121,7 @@ export const SettingsPage = () => {
     const formattedUrl = url.trim().replace(/\/$/, '');
     setServerConfig({ serverUrl: formattedUrl, username: username.trim(), password });
     updateSettings({
-      localShuffleUrl: shuffleUrl.trim().replace(/\/$/, ''),
+      v2ShuffleUrl: shuffleUrl.trim().replace(/\/$/, ''),
       lastfmApiKey: lastfmApiKey.trim(),
       lastfmApiSecret: lastfmApiSecret.trim(),
     });
@@ -139,7 +136,7 @@ export const SettingsPage = () => {
         setAiTestResult({ type: 'error', message: 'Please enter a URL first.' });
         return;
       }
-      const tempService = new ShuffleApiService({ baseUrl: formattedUrl });
+      const tempService = new V2ShuffleApiService({ baseUrl: formattedUrl });
       const healthData = await tempService.getHealth();
       if (healthData.isHealthy) {
         setAiTestResult({ type: 'success', message: `Connected · Library size: ${healthData.librarySize?.toLocaleString() ?? 0} songs` });
@@ -251,7 +248,7 @@ export const SettingsPage = () => {
             </div>
             {sessionStatus && (
               <div className="font-mono text-xs text-ink-mute flex justify-between items-center mt-4">
-                <span>{sessionStatus.songCount} SONGS · {startedAtFormatted(sessionStatus.startedAt)}</span>
+                <span>{sessionStatus.songCount} SONGS</span>
                 <button onClick={resetSession} className="underline hover:text-ink">Reset Session</button>
               </div>
             )}

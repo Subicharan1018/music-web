@@ -84,14 +84,9 @@ export const PlaylistDetailPage = () => {
     try {
       const songs = openPlaylist.entry;
       const opts  = { playlistName: openPlaylist.name };
-      console.log(`[PlaylistDetailPage] handleSmartShuffle — v2ShuffleEnabled=${v2ShuffleEnabled}`);
-      if (v2ShuffleEnabled && enableV2Shuffle) {
-        await enableV2Shuffle({ songs, ...opts });
-        addToast(`V2 AI shuffle ready — ${songs.length} songs queued`, 'success');
-      } else {
-        await enableSmartShuffle(songs, opts);
-        addToast(`Smart shuffle ready — ${songs.length} songs queued`, 'success');
-      }
+      
+      await enableV2Shuffle({ songs, ...opts });
+      addToast(`V2 AI shuffle ready — ${songs.length} songs queued`, 'success');
     } catch (err) {
       addToast('Shuffle failed — playing in original order', 'error');
     } finally {

@@ -13,7 +13,7 @@ import { useSubsonic } from '../hooks/useSubsonic';
 import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
 import { usePlayAction } from '../hooks/player/usePlayAction';
 import { Flame, Play, RefreshCw, Server, AlertCircle, Settings2, X, Info } from 'lucide-react';
-import { useAIShuffleStore } from '../store/aiShuffleStore';
+
 import { useListeningStatsStore, ERR_NOT_CONFIGURED, ERR_ENDPOINT_404, ERR_NETWORK } from '../store/listeningStatsStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { Link } from 'react-router-dom';
@@ -56,20 +56,6 @@ export const StatsPage = () => {
   const client = useSubsonic();
   const { playSong } = usePlayAction();
   
-  const { isConfigured, stats, statsLastFetched, fetchStats } = useAIShuffleStore();
-  const [isRefreshingStats, React_setIsRefreshingStats] = React.useState(false);
-
-  const handleRefreshStats = async () => {
-    React_setIsRefreshingStats(true);
-    await fetchStats();
-    React_setIsRefreshingStats(false);
-  };
-
-  React.useEffect(() => {
-    if (isConfigured) {
-      fetchStats();
-    }
-  }, [isConfigured, fetchStats]);
 
   const containerRef = useRef(null);
 
@@ -264,45 +250,7 @@ export const StatsPage = () => {
         </div>
       </div>
 
-      {/* Nº 06 · AI SERVER STATS */}
-      {isConfigured && (
-        <div className="mb-14 reveal-item">
-          <SectionHeader num="Nº 06" title="AI Server Stats" />
-          <div className="flex items-center justify-between mb-6">
-            <p className="font-mono text-xs text-ink-faint uppercase tracking-widest">
-              {statsLastFetched ? `Updated ${dayjs(statsLastFetched).fromNow()}` : 'Fetching...'}
-            </p>
-            <button type="button" onClick={handleRefreshStats} disabled={isRefreshingStats}
-              className="flex items-center gap-2 font-sans text-xs font-medium text-ink-mute hover:text-ink transition-colors">
-              <RefreshCw size={14} className={isRefreshingStats ? 'animate-spin' : ''} />
-              {isRefreshingStats ? 'Refreshing' : 'Refresh'}
-            </button>
-          </div>
-          {!stats ? (
-            <p className="font-serif italic text-ink-mute py-6">No server stats available.</p>
-          ) : (
-            <div>
-              <div className="mb-8 flex items-baseline gap-3">
-                <span className="font-serif text-5xl italic text-ink">{stats.totalPlays?.toLocaleString() || 0}</span>
-                <span className="font-sans text-sm text-ink-mute uppercase tracking-widest">Total AI Predictions</span>
-              </div>
-              {stats.topSongs?.length > 0 && (
-                <div>
-                  <h3 className="font-sans text-[10px] tracking-[0.15em] uppercase text-ink-faint mb-3">Top AI Predictions</h3>
-                  <div className="space-y-0 border-t border-ink/5 pt-2">
-                    {stats.topSongs.map((entry, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-2 border-b border-ink/5">
-                        <span className="font-serif text-base text-ink">{entry.song_key || entry.title || 'Unknown'}</span>
-                        <span className="font-mono text-xs text-ink-faint">{entry.count} plays</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* Nº 07 · SERVER LISTENING STATS */}
       <ServerListeningStats />

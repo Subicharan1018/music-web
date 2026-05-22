@@ -17,8 +17,7 @@ import { useLyrics } from '../../hooks/lyrics/useLyrics';
 import { AddToPlaylistDialog } from '../playlists/AddToPlaylistDialog';
 import { GenerativeArtScene } from '../ui/GenerativeArtScene';
 import { gsap } from '../../lib/gsap';
-import { useAIShuffleStore } from '../../store/aiShuffleStore';
-import { useServerHealth } from '../../hooks/ai/useServerHealth';
+
 import { usePlayerStore } from '../../store/playerStore';
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -297,11 +296,7 @@ export const NowPlayingOverlay = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   // false = queue (BB8 day), true = lyrics (BB8 night)
   const [showLyrics, setShowLyrics] = useState(false);
-  const { isConfigured, isHealthy, health } = useServerHealth();
-
-  const fetchNext = useAIShuffleStore((s) => s.fetchNext);
-  const sessionStatus = useAIShuffleStore((s) => s.sessionStatus);
-  const resetSession = useAIShuffleStore((s) => s.resetSession);
+  const { isConfigured, isHealthy, health } = useV2ShuffleStore();
 
   const fetchNextV2 = useV2ShuffleStore((s) => s.fetchNext);
   const v2SessionStatus = useV2ShuffleStore((s) => s.sessionStatus);
@@ -327,11 +322,10 @@ export const NowPlayingOverlay = () => {
     if (shufflePending) return; // reject while AI fetch in flight (C3)
     if (shuffleMode === 'none') enableDumbShuffle();
     else if (shuffleMode === 'dumb') {
-      if (v2ShuffleEnabled) void enableV2Shuffle();
-      else void enableSmartShuffle(); // S6: no queue arg
+      void enableV2Shuffle();
     }
     else disableShuffle();
-  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
+  }, [shuffleMode, shufflePending, enableDumbShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 
   const cycleRepeat = useCallback(() => {
     if (repeatMode === 'none') setRepeatMode('all');
@@ -361,20 +355,12 @@ export const NowPlayingOverlay = () => {
   const shuffleColor = shuffleMode === 'smart' ? '#ff8c00' : shuffleMode === 'smart-v2' ? '#a855f7' : shuffleMode === 'dumb' ? '#dc143c' : null;
 
   const handleAI = useCallback(() => {
-    if (shuffleMode === 'smart-v2') {
-      fetchNextV2();
-    } else {
-      fetchNext({ current: currentSong?.title });
-    }
-  }, [fetchNext, fetchNextV2, currentSong?.title, shuffleMode]);
+    fetchNextV2();
+  }, [fetchNextV2]);
 
   const handleResetSession = useCallback(async () => {
-    if (shuffleMode === 'smart-v2') {
-      await resetSessionV2();
-    } else {
-      await resetSession(currentSong?.title);
-    }
-  }, [resetSession, resetSessionV2, currentSong?.title, shuffleMode]);
+    await resetSessionV2();
+  }, [resetSessionV2]);
 
   return (
     <div
@@ -510,9 +496,9 @@ export const NowPlayingOverlay = () => {
              
              {/* Volume & Session */}
              <div className="flex items-center gap-6">
-                {(shuffleMode === 'smart-v2' ? v2SessionStatus : sessionStatus) && (
+                {v2SessionStatus && (
                   <div className="flex items-center gap-2 font-mono text-[9px] text-white/30 uppercase tracking-widest">
-                    <span>{shuffleMode === 'smart-v2' ? v2SessionStatus?.songCount : sessionStatus?.songCount} AI Queue</span>
+                    <span>{v2SessionStatus?.songCount} AI Queue</span>
                     <button type="button" onClick={handleResetSession} className="hover:text-[#e34262] transition-colors underline underline-offset-2">Reset</button>
                   </div>
                 )}

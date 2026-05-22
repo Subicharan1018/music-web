@@ -7,7 +7,7 @@
  *   - Border-top: 1px solid rgba(180,20,20,0.18) — no solid grey
  *   - Progress bar: .player-range with --pct CSS var written from rAF (no React state)
  *   - Seeking: useRef flag (no re-render during drag)
- *   - AI✦ pill: fires aiShuffleStore.fetchNext on click
+ *   - AI✦ pill: fires v2ShuffleStore.fetchNext on click
  */
 
 import React, { useEffect, useRef, useCallback, useState } from 'react';
@@ -18,7 +18,7 @@ import {
 import { usePlayer } from '../../hooks/usePlayer';
 import { useSubsonic } from '../../hooks/useSubsonic';
 import { useUIStore } from '../../store/uiStore';
-import { useAIShuffleStore } from '../../store/aiShuffleStore';
+
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { usePlayerStore } from '../../store/playerStore';
@@ -111,16 +111,14 @@ export const PlayerBar = () => {
   const {
     currentSong, isPlaying,
     volume, play, pause, next, prev, seek, setVolume,
-    shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
+    shuffleMode, shufflePending, enableV2Shuffle, enableDumbShuffle, disableShuffle,
     repeatMode, setRepeatMode, queue,
   } = usePlayer();
 
 
   const client = useSubsonic();
   const { nowPlayingExpanded, setNowPlayingExpanded } = useUIStore();
-  const fetchNext = useAIShuffleStore((s) => s.fetchNext);
-  const aiActive = useAIShuffleStore((s) => s.sessionStatus?.songCount > 0);
-  
+
   const fetchNextV2 = useV2ShuffleStore((s) => s.fetchNext);
   const v2Active = useV2ShuffleStore((s) => s.sessionStatus?.songCount > 0);
   const { v2ShuffleEnabled } = useSettingsStore();
@@ -171,11 +169,10 @@ export const PlayerBar = () => {
     console.log(`[ShuffleToggle:PlayerBar] mode=${shuffleMode} | v2ShuffleEnabled=${v2ShuffleEnabled}`);
     if (shuffleMode === 'none') enableDumbShuffle();
     else if (shuffleMode === 'dumb') {
-      if (v2ShuffleEnabled) void enableV2Shuffle();
-      else void enableSmartShuffle(); // S6: no queue arg
+      void enableV2Shuffle();
     }
     else disableShuffle();
-  }, [shuffleMode, shufflePending, enableDumbShuffle, enableSmartShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
+  }, [shuffleMode, shufflePending, enableDumbShuffle, enableV2Shuffle, disableShuffle, v2ShuffleEnabled]);
 
 
   const cycleRepeat = useCallback((e) => {
@@ -188,12 +185,8 @@ export const PlayerBar = () => {
   /* ── AI✦ pill ── */
   const handleAI = useCallback((e) => {
     e.stopPropagation();
-    if (shuffleMode === 'smart-v2') {
-      fetchNextV2();
-    } else {
-      fetchNext({ current: currentSong?.title });
-    }
-  }, [fetchNext, fetchNextV2, currentSong, shuffleMode]);
+    fetchNextV2();
+  }, [fetchNextV2]);
 
   /* ── Cover URL ── */
   const coverUrl = currentSong?.coverArt && client
@@ -461,18 +454,18 @@ export const PlayerBar = () => {
             disabled={shufflePending}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 flex-shrink-0"
             style={{
-              background: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+              background: v2Active
                 ? 'rgba(139,0,0,0.35)'
                 : 'rgba(220,20,60,0.05)',
               border: `1px solid ${
-                (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+                v2Active
                   ? 'rgba(220,20,60,0.6)'
                   : 'rgba(220,20,60,0.15)'
               }`,
-              color: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+              color: v2Active
                 ? '#ff6b6b'
                 : 'rgba(255,255,255,0.3)',
-              boxShadow: (shuffleMode === 'smart-v2' ? v2Active : aiActive)
+              boxShadow: v2Active
                 ? '0 0 12px rgba(139,0,0,0.4)'
                 : 'none',
               opacity: shufflePending ? 0.5 : 1,

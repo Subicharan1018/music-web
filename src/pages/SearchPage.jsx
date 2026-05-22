@@ -6,8 +6,7 @@ import { SongRow } from '../components/library/SongRow';
 import { useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
 import { useGSAPScrollReveal } from '../hooks/utils/useGSAPScrollReveal';
-import * as reactWindowPkg from 'react-window';
-const { FixedSizeList } = reactWindowPkg;
+import { FixedSizeList } from 'react-window';
 import { SONG_ROW_HEIGHT } from '../lib/constants';
 
 export const SearchPage = () => {

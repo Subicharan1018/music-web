@@ -10,8 +10,7 @@ import { useUIStore } from '../store/uiStore';
 import { AlbumCard } from '../components/library/AlbumCard';
 import { SongRow } from '../components/library/SongRow';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
-import * as reactWindowPkg from 'react-window';
-const { FixedSizeList } = reactWindowPkg;
+import { FixedSizeList } from 'react-window';
 import { SONG_ROW_HEIGHT } from '../lib/constants';
 
 export const FavoritesPage = () => {

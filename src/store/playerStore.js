@@ -18,7 +18,7 @@ import { create } from 'zustand';
 import AudioEngine from '../services/AudioEngine';
 import ScrobbleService from '../services/ScrobbleService';
 import { applyShuffleAlgorithm } from '../services/ShuffleService';
-import { useAIShuffleStore } from './aiShuffleStore';
+
 import { useV2ShuffleStore } from './v2ShuffleStore';
 import { mapRecommendationsToSongs } from '../utils/mapRecommendations';
 import { useAffinityStore } from './affinityStore';
@@ -141,26 +141,9 @@ async function _triggerSmartLocalRefill(getState) {
         return;
       }
     } else {
-      // V1 Logic
-      const aiStore = useAIShuffleStore.getState();
-      if (aiStore.isConfigured && aiStore.isHealthy) {
-        try {
-          console.log(`[SmartLocal] → Sending /next request for refill batch (${batch.length} songs)`);
-          await aiStore.fetchNext({
-            current: currentSong.title || '',
-            artist:  currentSong.artist || '',
-            count:   SMART_LOCAL_BATCH,
-          });
-          const fresh = useAIShuffleStore.getState();
-          const mapped = mapRecommendationsToSongs(fresh.recommendedQueue, batch);
-          if (mapped.length >= 3) {
-            orderedBatch = mapped;
-            console.log(`[SmartLocal] ✓ AI ordered ${mapped.length} songs for refill`);
-          }
-        } catch (e) {
-          console.warn('[SmartLocal] AI refill request failed, using raw batch order:', e.message);
-        }
-      }
+      // If shuffleMode is not smart-v2, do nothing (or fallback gracefully)
+      console.warn('[SmartLocal] Refill triggered but shuffleMode is not smart-v2. Halting.');
+      return;
     }
 
     const toAppend = orderedBatch || batch;
@@ -471,141 +454,6 @@ export const usePlayerStore = create((set, get) => ({
 
   // ── Shuffle ────────────────────────────────────────────────────────────────
 
-  /**
-   * S1/C1/C2/C3/S5/S6 — Smart Local 15-song initial load.
-   * • Uses _shuffleLock to prevent concurrent calls (S5).
-   * • Sets shufflePending=true while AI fetch is in flight (C3).
-   * • Defaults pool to originalQueue, falls back to current queue (S6).
-   * • Calls _loadAndPlay after set() to replace AudioEngine's active track (S1).
-   * • Preloads queue[1] in _loadAndPlay (C2).
-   */
-  enableSmartShuffle: async (songs, options = {}) => {
-    if (_shuffleLock) {
-      console.log('[SmartShuffle] Already in progress — rejecting concurrent call');
-      return;
-    }
-    _shuffleLock = true;
-    set({ shufflePending: true });
-
-    try {
-      const { affinityData, playlistName } = options;
-      const affinityDataSafe = affinityData || useAffinityStore.getState();
-      const state = get();
-      const currentSong = state.currentSong;
-
-      // S6: use originalQueue as pool when available — never the already-shuffled queue
-      const pool = songs
-        || (state.originalQueue.length > 0 ? state.originalQueue : state.queue);
-
-      // Save original queue before first shuffle only
-      const originalQueue = state.shuffleMode === 'none' ? [...state.queue] : state.originalQueue;
-
-      // 1. Pick seed — ALWAYS random from pool for a genuinely different queue.
-      //    The current song is already playing and would just restart; the user
-      //    wants variety when they press smart shuffle.
-      const seedSong = pool[Math.floor(Math.random() * pool.length)];
-
-      console.log(`[SmartShuffle] Seed selected: "${seedSong?.title}" (current was: "${currentSong?.title}")`);
-
-      // Remember what was playing BEFORE we mutate the store
-      const playingSongId = currentSong?.id ?? null;
-
-      // 2. Init pool: all songs except seed, Fisher-Yates shuffled
-      const poolWithoutSeed = pool.filter((s) => s.id !== seedSong?.id);
-      for (let i = poolWithoutSeed.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [poolWithoutSeed[i], poolWithoutSeed[j]] = [poolWithoutSeed[j], poolWithoutSeed[i]];
-      }
-      _playlistPool = poolWithoutSeed;
-
-      // 3. Take first batch (up to 15)
-      const firstBatch = _playlistPool.splice(0, SMART_LOCAL_BATCH);
-
-      let ordered = null;
-      let queueSource = 'local';
-
-      // 4. Ask AI server to order the batch relative to seed
-      const aiStore = useAIShuffleStore.getState();
-      if (aiStore.isConfigured && aiStore.isHealthy && seedSong) {
-        try {
-          console.log(`[SmartShuffle] → Sending /next request | seed: "${seedSong.title}" | count: ${SMART_LOCAL_BATCH}`);
-          await aiStore.fetchNext({
-            current:  seedSong.title  || '',
-            artist:   seedSong.artist || '',
-            playlist: playlistName    || '',
-            count:    SMART_LOCAL_BATCH,
-          });
-          const freshAi = useAIShuffleStore.getState();
-          const mapped = mapRecommendationsToSongs(freshAi.recommendedQueue, firstBatch);
-          if (mapped.length >= 3) {
-            ordered = mapped;
-            queueSource = freshAi.queueSource || 'model';
-            console.log(`[SmartShuffle] ✓ AI returned ${mapped.length} ordered songs (source: ${queueSource})`);
-          } else {
-            console.warn(`[SmartShuffle] AI mapping produced only ${mapped.length} songs — falling back to local`);
-          }
-        } catch (e) {
-          console.warn('[SmartShuffle] AI /next request failed — falling back to local:', e.message);
-        }
-      } else {
-        console.log('[SmartShuffle] AI not available — using local affinity shuffle');
-      }
-
-      // 5. Fallback: local affinity-based ordering of the batch
-      if (!ordered || ordered.length === 0) {
-        ordered = applyShuffleAlgorithm(firstBatch, affinityDataSafe, {
-          maxQueue: SMART_LOCAL_BATCH,
-          avoidRecent: true,
-          seedSong,
-        });
-        queueSource = 'local';
-      }
-
-      // 6. Build initial queue: [seed, ...ordered batch]
-      // Deduplicate: remove seed from ordered in case AI returned it as a recommendation
-      const orderedDeduped = seedSong
-        ? ordered.filter((s) => s.id !== seedSong.id)
-        : ordered;
-      const initialQueue = seedSong ? [seedSong, ...orderedDeduped] : orderedDeduped;
-
-      // 7. Drain pool of anything already in initial queue
-      const queuedIds = new Set(initialQueue.map((s) => s.id));
-      _playlistPool = _playlistPool.filter((s) => !queuedIds.has(s.id));
-
-
-      // 8. Commit to store
-      set({
-        shuffleMode: 'smart',
-        originalQueue,
-        queue: initialQueue,
-        queueSource,
-        currentIndex: 0,
-        currentSong: initialQueue[0] || null,
-      });
-
-      // 9. S1/C2: Load into AudioEngine — but ONLY if seed differs from currently-playing song.
-      //    If seed === playing song, it's already running; just preload queue[1] silently.
-      if (initialQueue[0]?.id !== playingSongId) {
-        console.log(`[SmartShuffle] Seed is different from current song — loading into AudioEngine`);
-        _loadAndPlay(initialQueue[0], get(), initialQueue[1] || null);
-      } else {
-        console.log(`[SmartShuffle] Seed matches current song — keeping playback, preloading next only`);
-        const { audioEngine, subsonicClient } = get();
-        if (audioEngine && subsonicClient && initialQueue[1]) {
-          audioEngine.preloadNext(initialQueue[1], subsonicClient.stream(initialQueue[1].id));
-          console.log(`[SmartShuffle] Preloaded next: "${initialQueue[1].title}"`);
-        }
-      }
-
-
-      console.log(`[SmartShuffle] ✓ Queue ready — ${initialQueue.length} songs (pool: ${_playlistPool.length} remaining)`);
-    } catch (e) {
-      console.error('[SmartShuffle] enableSmartShuffle failed:', e);
-    } finally {
-      _shuffleLock = false;
-      set({ shufflePending: false });
-    }
-  },
 
   /**
    * S1/C1 — Enable V2 Experimental Shuffle.
@@ -794,13 +642,11 @@ export const usePlayerStore = create((set, get) => ({
   
   cycleShuffleMode: () => {
     const state = get();
-    // Assuming simple cycle: none -> dumb -> smart -> none. (Ignoring smart-v2 since it's experimental)
+    // Cycle: none -> dumb -> smart-v2 -> none. (Replaced v1 with v2)
     if (state.shuffleMode === 'none') {
       state.enableDumbShuffle();
     } else if (state.shuffleMode === 'dumb') {
-      // It's difficult to automatically trigger smart shuffle here since we don't know the intended playlist context.
-      // But we can trigger it and it will pick a random seed from current pool.
-      state.enableSmartShuffle();
+      state.enableV2Shuffle();
     } else {
       state.disableShuffle();
     }
