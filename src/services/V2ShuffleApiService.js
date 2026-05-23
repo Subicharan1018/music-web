@@ -4,6 +4,8 @@
  * Handles trailing slashes, network errors, and fire-and-forget feedback.
  */
 
+import { useSettingsStore } from '../store/settingsStore';
+
 export class V2ShuffleNetworkError extends Error {
   constructor(message) {
     super(message);
@@ -15,6 +17,12 @@ export class V2ShuffleApiService {
   constructor({ baseUrl }) {
     this._baseUrl = (baseUrl || '').trim().replace(/\/+$/, '');
     this._unconfigured = !this._baseUrl;
+  }
+
+  _authHeaders() {
+    const { username, password } = useSettingsStore.getState();
+    if (!username || !password) return {};
+    return { 'Authorization': 'Basic ' + btoa(username + ':' + password) };
   }
 
   /**
@@ -45,7 +53,7 @@ export class V2ShuffleApiService {
       const response = await this._wrap(
         fetch(`${this._baseUrl}/health`, {
           signal: controller.signal,
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', ...this._authHeaders() },
         })
       );
       if (!response.ok) {
@@ -78,7 +86,7 @@ export class V2ShuffleApiService {
       const response = await this._wrap(
         fetch(`${this._baseUrl}/weather`, {
           signal: controller.signal,
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', ...this._authHeaders() },
         })
       );
       if (!response.ok) return null;
@@ -121,7 +129,7 @@ export class V2ShuffleApiService {
       const response = await this._wrap(
         fetch(`${this._baseUrl}/next`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...this._authHeaders() },
           body: JSON.stringify(payload),
           signal: controller.signal,
         })
@@ -133,6 +141,50 @@ export class V2ShuffleApiService {
       console.log('[V2ShuffleApi] POST /next Response Queue:', data.queue);
       console.log('[V2ShuffleApi] POST /next Response Context:', data.context);
       return data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * GET /listening-log/stats
+   */
+  async getListeningStats({ period = 'weekly' } = {}) {
+    if (this._unconfigured) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const response = await this._wrap(
+        fetch(`${this._baseUrl}/listening-log/stats?period=${period}`, {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json', ...this._authHeaders() },
+        })
+      );
+      if (!response.ok) throw new Error(`Server returned status: ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * GET /listening-log/contribution-graph
+   */
+  async getContributionGraph() {
+    if (this._unconfigured) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const response = await this._wrap(
+        fetch(`${this._baseUrl}/listening-log/contribution-graph`, {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json', ...this._authHeaders() },
+        })
+      );
+      if (!response.ok) throw new Error(`Server returned status: ${response.status}`);
+      return await response.json();
     } finally {
       clearTimeout(timer);
     }
@@ -159,7 +211,7 @@ export class V2ShuffleApiService {
     // Fire and forget
     fetch(`${this._baseUrl}/feedback`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this._authHeaders() },
       body: JSON.stringify(payload),
       keepalive: true, // Survive page unloads
     }).catch(err => {

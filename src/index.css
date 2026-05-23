@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
 
 @theme {
   --color-paper: #000000;
@@ -19,6 +19,24 @@
   --color-olive: #b36200;
 
   --color-accent: var(--accent);
+
+  /* New Design Tokens */
+  --color-background: #0A0A0F;
+  --color-surface: rgba(255, 255, 255, 0.04);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #F0F0F5;
+  --color-muted: rgba(240, 240, 245, 0.45);
+  --color-muted-foreground: rgba(240, 240, 245, 0.45);
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
 
   --font-serif: 'Playfair Display', 'Times New Roman', serif;
   --font-sans: 'Inter Tight', 'Inter', system-ui, sans-serif;

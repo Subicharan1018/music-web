@@ -9,7 +9,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { usePlaylistStore } from '../../store/playlistStore';
 import { useAffinityStore } from '../../store/affinityStore';
-import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search } from 'lucide-react';
+import { Home, Library, Mic2, ListMusic, Heart, Settings, Menu, BarChart2, Search, LayoutDashboard } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label, collapsed, badge }) => (
   <NavLink
@@ -118,7 +118,7 @@ export const Sidebar = () => {
           <NavItem to="/albums"    icon={Home}      label="Albums"    collapsed={sidebarCollapsed} />
           <NavItem to="/artists"   icon={Mic2}      label="Artists"   collapsed={sidebarCollapsed} />
           <NavItem to="/playlists" icon={ListMusic} label="Playlists" collapsed={sidebarCollapsed} badge={playlists?.length > 0 ? playlists.length : undefined} />
-          <NavItem to="/favorites" icon={Heart}     label="Favorites" collapsed={sidebarCollapsed} />
+          <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" collapsed={sidebarCollapsed} />
         </NavSection>
 
         <NavSection title="System" collapsed={sidebarCollapsed}>

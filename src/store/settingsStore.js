@@ -35,13 +35,13 @@ export const useSettingsStore = create(
   persist(
     (set, get) => ({
       // ── Credentials (hydrated from cookies at module load) ────────────────
-      serverUrl:    initialAuth.serverUrl    || '',
+      serverUrl:    'https://subimusic.me',
       username:     initialAuth.username     || '',
       password:     initialAuth.password     || '',
       isConfigured: initialAuth.isConfigured || false,
 
       localShuffleUrl: initialAuth.localShuffleUrl || '',
-      v2ShuffleUrl:    initialAuth.v2ShuffleUrl    || 'http://100.99.105.51:5000',
+      v2ShuffleUrl:    'https://shuffle.subimusic.me',
 
       lastfmSessionKey: initialAuth.lastfmSessionKey || null,
       lastfmApiKey:     initialAuth.lastfmApiKey     || '',

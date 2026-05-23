@@ -62,10 +62,8 @@ export const SettingsPage = () => {
   const [searchParams] = useSearchParams();
 
   // State
-  const [url, setUrl] = useState(serverUrl || '');
   const [username, setUsername] = useState(storeUsername || '');
   const [password, setPassword] = useState(storePassword || '');
-  const [shuffleUrl, setShuffleUrl] = useState(v2ShuffleUrl || '');
   const [lastfmApiKey, setLastfmApiKey] = useState(storeLastfmApiKey || '');
   const [lastfmApiSecret, setLastfmApiSecret] = useState(storeLastfmApiSecret || '');
 
@@ -81,10 +79,8 @@ export const SettingsPage = () => {
   const affinityReset = useAffinityStore((s) => s.reset);
 
   useEffect(() => {
-    setUrl(serverUrl || '');
     setUsername(storeUsername || '');
     setPassword(storePassword || '');
-    setShuffleUrl(v2ShuffleUrl || '');
     setLastfmApiKey(storeLastfmApiKey || '');
     setLastfmApiSecret(storeLastfmApiSecret || '');
     
@@ -102,7 +98,7 @@ export const SettingsPage = () => {
     setTestResult(null);
     setIsTesting(true);
     try {
-      const formattedUrl = url.trim().replace(/\/$/, '');
+      const formattedUrl = 'https://subimusic.me';
       const client = createSubsonicClient({ serverUrl: formattedUrl, username: username.trim(), password });
       const startTime = Date.now();
       await client.ping();
@@ -118,10 +114,10 @@ export const SettingsPage = () => {
   };
 
   const handleSave = () => {
-    const formattedUrl = url.trim().replace(/\/$/, '');
+    const formattedUrl = 'https://subimusic.me';
     setServerConfig({ serverUrl: formattedUrl, username: username.trim(), password });
     updateSettings({
-      v2ShuffleUrl: shuffleUrl.trim().replace(/\/$/, ''),
+      v2ShuffleUrl: 'https://shuffle.subimusic.me',
       lastfmApiKey: lastfmApiKey.trim(),
       lastfmApiSecret: lastfmApiSecret.trim(),
     });
@@ -131,11 +127,7 @@ export const SettingsPage = () => {
     setAiTestResult(null);
     setIsTestingAi(true);
     try {
-      const formattedUrl = shuffleUrl.trim().replace(/\/$/, '');
-      if (!formattedUrl) {
-        setAiTestResult({ type: 'error', message: 'Please enter a URL first.' });
-        return;
-      }
+      const formattedUrl = 'https://shuffle.subimusic.me';
       const tempService = new V2ShuffleApiService({ baseUrl: formattedUrl });
       const healthData = await tempService.getHealth();
       if (healthData.isHealthy) {
@@ -220,7 +212,7 @@ export const SettingsPage = () => {
       {/* Nº 01 · SERVER CONNECTION */}
       <div className="mb-16">
         <SectionHeader num="Nº 01" title="Server Connection" />
-        <InputField label="Server URL" type="url" value={url} onChange={setUrl} placeholder="https://music.example.com" />
+        {/* Server URL removed, hardcoded to https://subimusic.me */}
         <InputField label="Username" value={username} onChange={setUsername} />
         <InputField label="Password" type="password" value={password} onChange={setPassword} />
         <StatusBanner result={testResult} />
@@ -234,7 +226,7 @@ export const SettingsPage = () => {
       {/* Nº 02 · AI SHUFFLE SERVER */}
       <div className="mb-16">
         <SectionHeader num="Nº 02" title="AI Shuffle Server" />
-        <InputField label="Server URL" type="url" value={shuffleUrl} onChange={setShuffleUrl} placeholder="http://localhost:5000" hint="Uses local AI shuffle server when available; falls back to on-device scoring." />
+        {/* Shuffle URL removed, hardcoded to https://shuffle.subimusic.me */}
         <StatusBanner result={aiTestResult} />
         <div className="flex gap-4 mb-6">
           <Button variant="ghost" onClick={handleTestAiConnection} disabled={isTestingAi}>{isTestingAi ? 'Testing…' : 'Test'}</Button>

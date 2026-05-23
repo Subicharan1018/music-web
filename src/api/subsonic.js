@@ -32,7 +32,7 @@ export class ServerException extends Error {
 
 class SubsonicClient {
   constructor(config = {}) {
-    this.serverUrl = config.serverUrl ? config.serverUrl.replace(/\/$/, '') : '';
+    this.serverUrl = 'https://subimusic.me';
     this.username = config.username || '';
     this.password = config.password || '';
     this.clientName = 'NaviVibeWeb';

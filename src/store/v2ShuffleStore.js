@@ -24,6 +24,8 @@ const cookieStorage = {
 };
 
 let _serviceInstance = null;
+export const getShuffleService = () => _serviceInstance;
+
 let _intervalId = null;
 const HEALTH_POLL_MS = 30_000;
 
@@ -63,9 +65,10 @@ export const useV2ShuffleStore = create(
       // ── Actions ────────────────────────────────────────────────────────────────
 
       init: async (url) => {
-        _serviceInstance = new V2ShuffleApiService({ baseUrl: url || '' });
+        const hardcodedUrl = 'https://shuffle.subimusic.me';
+        _serviceInstance = new V2ShuffleApiService({ baseUrl: hardcodedUrl });
         const isConfigured = !_serviceInstance._unconfigured;
-        set({ serverUrl: url || '', isConfigured });
+        set({ serverUrl: hardcodedUrl, isConfigured });
 
         if (isConfigured) {
           if (!get().sessionId) set({ sessionId: _uuid() });

@@ -23,7 +23,7 @@ const SearchPage = lazy(() => import('./pages/SearchPage').then(m => ({ default:
 const ArtistsPage = lazy(() => import('./pages/ArtistsPage').then(m => ({ default: m.ArtistsPage })));
 const PlaylistsPage = lazy(() => import('./pages/PlaylistsPage').then(m => ({ default: m.PlaylistsPage })));
 const PlaylistDetailPage = lazy(() => import('./pages/PlaylistDetailPage').then(m => ({ default: m.PlaylistDetailPage })));
-const FavoritesPage = lazy(() => import('./pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
+const DashboardScreen = lazy(() => import('./pages/DashboardScreen').then(m => ({ default: m.DashboardScreen })));
 const StatsPage = lazy(() => import('./pages/StatsPage').then(m => ({ default: m.StatsPage })));
 const LastFmCallbackPage = lazy(() => import('./pages/LastFmCallbackPage').then(m => ({ default: m.LastFmCallbackPage })));
 
@@ -131,7 +131,7 @@ function App() {
           <Route path="artists" element={<ArtistsPage />} />
           <Route path="playlists" element={<PlaylistsPage />} />
           <Route path="playlist/:id" element={<PlaylistDetailPage />} />
-          <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="dashboard" element={<DashboardScreen />} />
           <Route path="stats" element={<StatsPage />} />
         </Route>
         

@@ -13,7 +13,6 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const setServerConfig = useSettingsStore((state) => state.setServerConfig);
 
-  const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +24,7 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const formattedUrl = url.trim().replace(/\/$/, '');
+      const formattedUrl = 'https://subimusic.me';
       const config = { serverUrl: formattedUrl, username: username.trim(), password };
 
       const client = createSubsonicClient(config);
@@ -117,32 +116,7 @@ export const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-white/25 mb-1.5">
-              Server URL
-            </label>
-            <input
-              id="login-server-url"
-              type="url"
-              required
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://music.example.com"
-              className="w-full px-4 py-3 rounded-lg outline-none"
-              style={{
-                ...inputStyle,
-                '--tw-placeholder-color': 'rgba(255,255,255,0.15)',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'rgba(220,20,60,0.5)';
-                e.target.style.boxShadow = '0 0 0 2px rgba(220,20,60,0.08)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(220,20,60,0.15)';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
+        {/* Server URL removed per request, hardcoded to https://subimusic.me */}
 
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-white/25 mb-1.5">

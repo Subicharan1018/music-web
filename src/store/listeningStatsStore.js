@@ -30,11 +30,18 @@ async function _fetchV2(baseUrl, endpoint) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  const { username, password } = useSettingsStore.getState();
+  const headers = { Accept: 'application/json' };
+  
+  if (username && password) {
+    headers['Authorization'] = 'Basic ' + btoa(username + ':' + password);
+  }
+
   let res;
   try {
     res = await fetch(url, {
       signal: controller.signal,
-      headers: { Accept: 'application/json' },
+      headers,
     });
   } catch (err) {
     clearTimeout(timer);
