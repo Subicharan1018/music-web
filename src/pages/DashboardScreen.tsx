@@ -25,10 +25,30 @@ export function DashboardScreen() {
   const [stats, setStats] = useState<any>(null)
   const [graphData, setGraphData] = useState<any[]>([])
 
+  // Fetch Contribution Graph (Once on Mount)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchGraph = async () => {
+      const service = getShuffleService();
+      if (!service) return;
+      try {
+        const graphRes = await service.getContributionGraph();
+        if (isMounted) {
+          setGraphData(graphRes?.data || graphRes?.days || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch contribution graph", err);
+      }
+    };
+    fetchGraph();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Fetch Listening Stats (Reacts to Period)
   useEffect(() => {
     let isMounted = true;
     
-    const fetchData = async () => {
+    const fetchStats = async () => {
       const service = getShuffleService();
       if (!service) {
         if (isMounted) {
@@ -43,14 +63,10 @@ export function DashboardScreen() {
       
       try {
         const pStr = period.toLowerCase() === "all time" ? "all" : period.toLowerCase();
-        const [statsData, graphRes] = await Promise.all([
-          service.getListeningStats({ period: pStr }),
-          service.getContributionGraph()
-        ]);
+        const statsData = await service.getListeningStats({ period: pStr });
         
         if (isMounted) {
           setStats(statsData);
-          setGraphData(graphRes?.data || graphRes?.days || []);
         }
       } catch (err: any) {
         if (isMounted) setError(err.message || "Failed to load dashboard data");
@@ -59,7 +75,7 @@ export function DashboardScreen() {
       }
     };
     
-    fetchData();
+    fetchStats();
     
     return () => { isMounted = false };
   }, [period]);
@@ -125,8 +141,8 @@ export function DashboardScreen() {
     });
   }, [graphData]);
 
-  const topArtists = stats?.top_artists || stats?.topArtists || [];
-  const topTracks = stats?.top_tracks || stats?.topTracks || [];
+  const topArtists = useMemo(() => stats?.top_artists || stats?.topArtists || [], [stats]);
+  const topTracks = useMemo(() => stats?.top_tracks || stats?.topTracks || [], [stats]);
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 overflow-y-auto no-scrollbar">

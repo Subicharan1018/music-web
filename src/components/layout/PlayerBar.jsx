@@ -108,11 +108,18 @@ const DesktopProgress = React.memo(({ seek }) => {
 
 /* ── PlayerBar ── */
 export const PlayerBar = () => {
+  const currentSong = usePlayerStore(s => s.currentSong);
+  const isPlaying = usePlayerStore(s => s.isPlaying);
+  const volume = usePlayerStore(s => s.volume);
+  const queue = usePlayerStore(s => s.queue);
+  const shuffleMode = usePlayerStore(s => s.shuffleMode);
+  const shufflePending = usePlayerStore(s => s.shufflePending);
+  const repeatMode = usePlayerStore(s => s.repeatMode);
+
   const {
-    currentSong, isPlaying,
-    volume, play, pause, next, prev, seek, setVolume,
-    shuffleMode, shufflePending, enableV2Shuffle, enableDumbShuffle, disableShuffle,
-    repeatMode, setRepeatMode, queue,
+    play, pause, next, prev, seek, setVolume,
+    enableV2Shuffle, enableDumbShuffle, disableShuffle,
+    setRepeatMode,
   } = usePlayer();
 
 

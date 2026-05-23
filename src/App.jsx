@@ -44,7 +44,12 @@ const AuthGuard = ({ children }) => {
   const location = useLocation();
   const [isVerifying, setIsVerifying] = React.useState(true);
 
+  const hasVerifiedRef = React.useRef(false);
+
   React.useEffect(() => {
+    if (hasVerifiedRef.current) return;
+    hasVerifiedRef.current = true;
+
     let mounted = true;
     const verifySession = async () => {
       if (authCookies.exists() && !isConfigured) {

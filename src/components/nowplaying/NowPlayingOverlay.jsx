@@ -15,13 +15,14 @@ import { useUIStore } from '../../store/uiStore';
 import { useLibraryStore } from '../../store/libraryStore';
 import { useLyrics } from '../../hooks/lyrics/useLyrics';
 import { AddToPlaylistDialog } from '../playlists/AddToPlaylistDialog';
-import { GenerativeArtScene } from '../ui/GenerativeArtScene';
 import { gsap } from '../../lib/gsap';
 
 import { usePlayerStore } from '../../store/playerStore';
 import { useV2ShuffleStore } from '../../store/v2ShuffleStore';
 import { useSettingsStore } from '../../store/settingsStore';
-import React from 'react';
+import React, { Suspense } from 'react';
+
+const LazyGenerativeArtScene = React.lazy(() => import('../ui/GenerativeArtScene').then(m => ({ default: m.GenerativeArtScene })));
 
 const FALLBACK_COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="100%" height="100%" fill="%230a0a0a"/><circle cx="200" cy="200" r="120" fill="%23111"/><circle cx="200" cy="200" r="18" fill="%23333"/></svg>';
@@ -284,11 +285,21 @@ const QueuePanel = ({ queue, currentIndex, client, play }) => {
 export const NowPlayingOverlay = () => {
   const { nowPlayingExpanded, setNowPlayingExpanded } = useUIStore();
   const client = useSubsonic();
+  
+  // Atomic selectors for state to prevent monolithic re-renders
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const volume = usePlayerStore((s) => s.volume);
+  const queue = usePlayerStore((s) => s.queue);
+  const shuffleMode = usePlayerStore((s) => s.shuffleMode);
+  const shufflePending = usePlayerStore((s) => s.shufflePending);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const currentIndex = usePlayerStore((s) => s.currentIndex);
+
   const {
-    currentSong, isPlaying, volume, queue,
     play, pause, next, prev, seek, setVolume,
-    shuffleMode, shufflePending, enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
-    repeatMode, setRepeatMode, currentIndex,
+    enableSmartShuffle, enableV2Shuffle, enableDumbShuffle, disableShuffle,
+    setRepeatMode,
   } = usePlayer();
 
   const queueSource = usePlayerStore((s) => s.queueSource);
@@ -367,7 +378,9 @@ export const NowPlayingOverlay = () => {
       ref={containerRef}
       className={`fixed inset-0 z-[60] flex flex-col transition-transform duration-[350ms] ease-[cubic-bezier(0.32,0,0,1)] np-root ${nowPlayingExpanded ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'}`}
     >
-      <GenerativeArtScene isPlaying={isPlaying} />
+      <Suspense fallback={<div className="absolute inset-0 bg-[#0a0808]" />}>
+        <LazyGenerativeArtScene isPlaying={isPlaying} />
+      </Suspense>
 
       {/* ── Top bar ── */}
       <div className="relative z-10 flex items-center justify-between px-8 pt-5 pb-3 flex-shrink-0">

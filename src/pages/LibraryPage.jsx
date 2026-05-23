@@ -3,7 +3,7 @@
  * Displays library sections: Recommended For You, Recently Added, Frequently Played, All Albums.
  * Phase 6: Recommendations section added above, loaded after initial paint.
  */
-import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState, startTransition } from 'react';
 import { useSubsonic } from '../hooks/useSubsonic';
 import { useLibraryStore } from '../store/libraryStore';
 import { useAffinityStore } from '../store/affinityStore';
@@ -60,7 +60,9 @@ export const LibraryPage = () => {
         limit: 20,
         excludeRecent: true,
       });
-      setRecommendations(recs);
+      startTransition(() => {
+        setRecommendations(recs);
+      });
     }, 300); // slight defer so album grid renders first
 
     return () => clearTimeout(timer);
@@ -80,47 +82,6 @@ export const LibraryPage = () => {
   }, [isLoading, albumsHasMore, client, fetchAlbums]);
 
   const affinitySnapshot = useMemo(() => affinityState(), [affinityState, recentPlays.length]);
-
-  const renderSection = (title, items, isHorizontal = false) => {
-    return (
-      <div className="flex flex-col gap-4 mb-12 reveal-item">
-        <div className="flex justify-between items-end border-b border-white/10 pb-3 mb-2 relative">
-          <div className="absolute bottom-[-1px] left-0 w-24 h-[1px] bg-gradient-to-r from-coral to-transparent" />
-          <div className="font-sans text-[13px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-            {title}
-          </div>
-        </div>
-        
-        {items.length === 0 && !isLoading ? (
-          <div className="py-8 font-serif italic text-ink-mute">
-            No albums found.
-          </div>
-        ) : isHorizontal ? (
-          <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar -mx-8 px-8 snap-x">
-            {isLoading && items.length === 0 ? (
-              [1,2,3,4,5].map(i => <div key={i} className="w-40 shrink-0 snap-start"><SkeletonCard /></div>)
-            ) : (
-              items.map(album => (
-                <div key={album.id} className="w-40 shrink-0 snap-start">
-                  <AlbumCard album={album} />
-                </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {items.map((album, i) => {
-              if (items.length === i + 1) {
-                return <div key={album.id} ref={lastElementRef}><AlbumCard album={album} /></div>
-              }
-              return <AlbumCard key={album.id} album={album} />
-            })}
-            {isLoading && [1,2,3,4,5,6].map(i => <SkeletonCard key={`sk-${i}`} />)}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div ref={containerRef} className="p-8 pb-32 max-w-6xl mx-auto h-full overflow-y-auto no-scrollbar">
@@ -142,9 +103,50 @@ export const LibraryPage = () => {
         </div>
       )}
 
-      {renderSection('Nº 01 · Recently Added', recentAlbums, true)}
-      {renderSection('Nº 02 · Frequently Played', frequentAlbums, true)}
-      {renderSection('Nº 03 · All Albums', albums, false)}
+      <LibrarySection title="Nº 01 · Recently Added" items={recentAlbums} isHorizontal={true} isLoading={isLoading} />
+      <LibrarySection title="Nº 02 · Frequently Played" items={frequentAlbums} isHorizontal={true} isLoading={isLoading} />
+      <LibrarySection title="Nº 03 · All Albums" items={albums} isHorizontal={false} isLoading={isLoading} lastElementRef={lastElementRef} />
     </div>
   );
 };
+
+const LibrarySection = React.memo(({ title, items, isHorizontal = false, isLoading, lastElementRef }) => {
+  return (
+    <div className="flex flex-col gap-4 mb-12 reveal-item">
+      <div className="flex justify-between items-end border-b border-white/10 pb-3 mb-2 relative">
+        <div className="absolute bottom-[-1px] left-0 w-24 h-[1px] bg-gradient-to-r from-coral to-transparent" />
+        <div className="font-sans text-[13px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+          {title}
+        </div>
+      </div>
+      
+      {items.length === 0 && !isLoading ? (
+        <div className="py-8 font-serif italic text-ink-mute">
+          No albums found.
+        </div>
+      ) : isHorizontal ? (
+        <div className="flex overflow-x-auto gap-6 pb-4 no-scrollbar -mx-8 px-8 snap-x">
+          {isLoading && items.length === 0 ? (
+            [1,2,3,4,5].map(i => <div key={i} className="w-40 shrink-0 snap-start"><SkeletonCard /></div>)
+          ) : (
+            items.map(album => (
+              <div key={album.id} className="w-40 shrink-0 snap-start">
+                <AlbumCard album={album} />
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          {items.map((album, i) => {
+            if (lastElementRef && items.length === i + 1) {
+              return <div key={album.id} ref={lastElementRef}><AlbumCard album={album} /></div>
+            }
+            return <AlbumCard key={album.id} album={album} />
+          })}
+          {isLoading && [1,2,3,4,5,6].map(i => <SkeletonCard key={`sk-${i}`} />)}
+        </div>
+      )}
+    </div>
+  );
+});

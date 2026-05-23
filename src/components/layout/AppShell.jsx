@@ -44,7 +44,7 @@ export const AppShell = () => {
       // Fetch playlists only once per session (guard in store prevents duplicate calls)
       fetchPlaylists(client);
     }
-  }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [client, audioEngine, initEngine, fetchPlaylists]);
 
 
 
@@ -59,7 +59,7 @@ export const AppShell = () => {
       stopV2Polling();
     }
     return () => stopV2Polling();
-  }, [v2ShuffleUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [v2ShuffleUrl, initV2, startV2Polling, stopV2Polling]);
 
   return (
     <>

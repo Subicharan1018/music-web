@@ -9,14 +9,8 @@ import { usePlayerStore } from '../store/playerStore';
 import { useAffinityStore } from '../store/affinityStore';
 
 export const usePlayer = () => {
-  const queue = usePlayerStore(s => s.queue);
-  const currentSong = usePlayerStore(s => s.currentSong);
   const isPlaying = usePlayerStore(s => s.isPlaying);
-  const currentIndex = usePlayerStore(s => s.currentIndex);
-  const volume = usePlayerStore(s => s.volume);
-  const shuffleMode = usePlayerStore(s => s.shuffleMode);
-  const shufflePending = usePlayerStore(s => s.shufflePending);
-  const repeatMode = usePlayerStore(s => s.repeatMode);
+  const currentSong = usePlayerStore(s => s.currentSong);
   const audioEngine = usePlayerStore(s => s.audioEngine);
 
   const timerRef = useRef(null);
@@ -117,15 +111,6 @@ export const usePlayer = () => {
   const disableShuffle = useCallback(() => usePlayerStore.getState().disableShuffle(), []);
 
   return {
-    queue,
-    currentSong,
-    isPlaying,
-    currentIndex,
-    volume,
-    shuffleMode,
-    shufflePending,
-    repeatMode,
-
     play,
     pause,
     next,
